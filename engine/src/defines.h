@@ -25,8 +25,8 @@ typedef bool b8;
 #define Gigabyte(value) (value * 1024LL * 1024LL * 1024LL)
 #define Terabyte(value) (value * 1024LL * 1024LL * 1024LL * 1024LL)
 
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
 
 #define Assert(condition) if(!(condition)) { *(u32*)0 = 0;}
 #define ArrayCount(array) (sizeof(array)/sizeof((array)[0]))
