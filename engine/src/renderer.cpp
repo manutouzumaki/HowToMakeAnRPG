@@ -63,25 +63,21 @@ internal void ShutdownRenderer(renderer *Renderer)
 
 internal void FlushRenderQueue(renderer *Renderer)
 {
+    glBufferSubData(GL_ARRAY_BUFFER, 0, (Renderer->QuadCount * 4) * VERTEX_SIZE_BYTES, Renderer->Vertices); 
+    glDrawElements(GL_TRIANGLES, Renderer->QuadCount * 6, GL_UNSIGNED_INT, 0);
+    Renderer->QuadCount = 0;
+}
+
+internal void RenderBegin(renderer *Renderer, u32 Shader)
+{
+    BindShader(Shader);
     glBindVertexArray(Renderer->VAO);
     glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, Renderer->QuadCount * (VERTEX_SIZE_BYTES * 4), Renderer->Vertices); 
+}
 
-    // TODO: Render Scene...
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
-    glEnableVertexAttribArray(3);
-
-    glDrawElements(GL_TRIANGLES, (Renderer->QuadCount * 4) * 6, GL_UNSIGNED_INT, 0);
-
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(2);
-    glDisableVertexAttribArray(3);
-    glBindVertexArray(0);
-
-    Renderer->QuadCount = 0;
+internal void RenderEnd(renderer *Renderer)
+{
+    FlushRenderQueue(Renderer);
 }
 
 internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 *Uvs)
@@ -106,7 +102,15 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
             X = -0.5f;
         else if(Index == 3)
             Y = 0.5f;
-        glm::vec4 CurrentP = ModelMat * glm::vec4(X, Y, 0, 1);
+        glm::vec2 CurrentP = glm::vec2(X, Y);
+        CurrentP.x *= Width;
+        CurrentP.y *= Height;
+        if(Angle > 0.0f)
+        {
+            CurrentP = glm::rotate(CurrentP, Angle);
+        }
+        CurrentP.x += XPos;
+        CurrentP.y += YPos;
         *Vertices++ = CurrentP.x;
         *Vertices++ = CurrentP.y;
         *Vertices++ = 1.0f;
@@ -122,11 +126,6 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
 
 internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 R, f32 G, f32 B, f32 A)
 {
-    glm::mat4 TranslationMat = glm::translate(glm::mat4(1.0f), glm::vec3(XPos, YPos, 0.0f));
-    glm::mat4 RotationMat = glm::rotate(glm::mat4(1.0f), Angle, glm::vec3(0, 0, 1));
-    glm::mat4 ScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(Width, Height, 1.0f));
-    glm::mat4 ModelMat = TranslationMat * RotationMat * ScaleMat;
-
     if(Renderer->QuadCount >= BATCH_SIZE)
     {
         FlushRenderQueue(Renderer);
@@ -142,7 +141,16 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
             X = -0.5f;
         else if(Index == 3)
             Y = 0.5f;
-        glm::vec4 CurrentP = ModelMat * glm::vec4(X, Y, 0, 1);
+        glm::vec2 CurrentP = glm::vec2(X, Y);
+        if(Angle > 0.0f)
+        {
+            // TODO: add a faster rotate function
+            CurrentP = glm::rotate(CurrentP, Angle);
+        }
+        CurrentP.x *= Width;
+        CurrentP.y *= Height;
+        CurrentP.x += XPos;
+        CurrentP.y += YPos;
         *Vertices++ = CurrentP.x;
         *Vertices++ = CurrentP.y;
         *Vertices++ = R;

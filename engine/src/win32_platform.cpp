@@ -168,7 +168,7 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext)
                     (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
         if(wglSwapIntervalEXT)
         {
-            wglSwapIntervalEXT(1);
+            wglSwapIntervalEXT(0);
         }
     
         if(!gladLoadGL())
@@ -207,13 +207,19 @@ internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width,
 
 }
 
+#if 0
 i32 WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, i32 CmdShow)
+#else
+int main()
+#endif
 {
+    HINSTANCE Instance = GetModuleHandle(0);
+
     Win32LoadXInput();
     HWND Window = Win32InitializeWindow(Instance, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, "HowToMakeAnRPG");
     HDC DeviceContext = GetDC(Window);
     Win32InitializeOpenGLContext(DeviceContext);
-    ShowWindow(Window, CmdShow);    
+    ShowWindow(Window, true);
     
     LARGE_INTEGER Frequency = {};
     QueryPerformanceFrequency(&Frequency);
@@ -254,24 +260,25 @@ i32 WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, i3
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // TODO: Render
-        BindShader(Shader);
-        for(i32 X = 0; X < 10; ++X)
+        RenderBegin(&Renderer, Shader);
+        for(i32 X = 0; X < 100; ++X)
         {
             for(i32 Y = 0; Y < 100; ++Y)
             {
                 float ColorR = (float)X / 100.0f;
                 float ColorG = (float)Y / 100.0f;
-                AddQuadToRenderQueue(&Renderer, (float)X*16.0f, (float)Y*16.0f, 16, 16, 0, ColorR, ColorG, 0, 1);
+                AddQuadToRenderQueue(&Renderer, (float)X*32.0f, (float)Y*32.0f, 32, 32, (f32)glm::radians(0.0f), ColorR, ColorG, 0, 1);
             }
         }
- 
-        FlushRenderQueue(&Renderer);
-        
+        RenderEnd(&Renderer);
+  
         SwapBuffers(DeviceContext); 
         LastInput = CurrInput;
         LastCounter = CurrentCounter;
-    }
+        
 
+        printf("fps:%d\n", (int)Fps);
+    }
     ShutdownRenderer(&Renderer);
     return 0;
 }
