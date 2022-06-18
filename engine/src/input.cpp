@@ -48,3 +48,28 @@ internal f32 Win32ProcessXInputStick(i16 Value, i32 DeadZoneValue)
     }
     return Result;
 }
+
+
+internal read_file_result Win32ReadEntireFile(const char *Filepath)
+{ 
+    read_file_result Result = {};
+    HANDLE FileHandle = CreateFileA(Filepath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if(FileHandle != INVALID_HANDLE_VALUE)
+    {
+        LARGE_INTEGER FileSize;
+        if(GetFileSizeEx(FileHandle, &FileSize))
+        {
+            Assert(FileSize.QuadPart <= 0xFFFFFFFF);
+            Result.data = malloc(FileSize.QuadPart + 1);
+            Result.size = FileSize.QuadPart;
+            if(ReadFile(FileHandle, Result.data, (DWORD)Result.size, 0, 0))
+            {
+                u8 *LastByte = (u8 *)Result.data + Result.size;
+                *LastByte = 0;
+                return Result;
+            }
+        }
+    }
+    Result = {};
+    return Result;
+}

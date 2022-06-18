@@ -1,10 +1,3 @@
-#include <Windows.h>
-#include <Windowsx.h>
-#include <xinput.h>
-#include <glad/glad.h>
-#include <GL/wglext.h>
-#include <stdio.h>
-
 #include "includes.h"
 
 global_variable bool GlobalRunning;
@@ -80,7 +73,6 @@ internal void Win32ProcessMessages(input *CurrInput, input *LastInput)
                 CurrInput->MouseMiddle.IsDown = ((Msg.wParam & MK_MBUTTON) != 0);
                 CurrInput->MouseRight.IsDown = ((Msg.wParam & MK_RBUTTON) != 0);
             }break;
-
             default:
             {
                 TranslateMessage(&Msg);
@@ -184,6 +176,8 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext)
             OutputDebugString("Error: glad failed Initialize\n");
         }
     }
+
+    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
 internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width, i32 Height, const char *Name)
@@ -217,29 +211,67 @@ i32 WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, i3
 {
     Win32LoadXInput();
     HWND Window = Win32InitializeWindow(Instance, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, "HowToMakeAnRPG");
-    ShowWindow(Window, CmdShow);    
     HDC DeviceContext = GetDC(Window);
     Win32InitializeOpenGLContext(DeviceContext);
- 
+    ShowWindow(Window, CmdShow);    
+    
+    LARGE_INTEGER Frequency = {};
+    QueryPerformanceFrequency(&Frequency);
+    
+    
+    // TODO: Initialize 
     input LastInput = {};
     input CurrInput = {};
 
-    // TODO: Initialize
+    u32 Shader = CreateShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
+    renderer Renderer = CreateRenderer();
+
+    BindShader(Shader);
+    glm::mat4 ProjectionMat = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, 100.0f);
+    UpdateMat4f(Shader, "uProj", ProjectionMat);
+
+    glm::vec3 Position = glm::vec3(0, 0, 20);
+    glm::vec3 Front = glm::vec3(Position.x, Position.y, -1);
+    glm::vec3 Up = glm::vec3(0, 1, 0);
+    glm::mat4 ViewMat = glm::lookAt(Position, Front, Up);
+    UpdateMat4f(Shader, "uView", ViewMat);
+
+    LARGE_INTEGER LastCounter = {};
+    QueryPerformanceCounter(&LastCounter);
 
     GlobalRunning = true;
     while(GlobalRunning)
     {
-        Win32ProcessMessages(&CurrInput, &LastInput);
+        LARGE_INTEGER CurrentCounter = {};
+        QueryPerformanceCounter(&CurrentCounter);
+        f64 Fps = (f64)Frequency.QuadPart / (f64)(CurrentCounter.QuadPart - LastCounter.QuadPart);
+        f32 DeltaTime = (f32)((f64)(CurrentCounter.QuadPart - LastCounter.QuadPart) / (f64)Frequency.QuadPart);
 
-        // TODO: Update
-        
+
+        Win32ProcessMessages(&CurrInput, &LastInput);
+ 
         glClearColor(1.0f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // TODO: Render
-
+        BindShader(Shader);
+        for(i32 X = 0; X < 10; ++X)
+        {
+            for(i32 Y = 0; Y < 100; ++Y)
+            {
+                float ColorR = (float)X / 100.0f;
+                float ColorG = (float)Y / 100.0f;
+                AddQuadToRenderQueue(&Renderer, (float)X*16.0f, (float)Y*16.0f, 16, 16, 0, ColorR, ColorG, 0, 1);
+            }
+        }
+ 
+        FlushRenderQueue(&Renderer);
+        
         SwapBuffers(DeviceContext); 
         LastInput = CurrInput;
+        LastCounter = CurrentCounter;
     }
+
+    ShutdownRenderer(&Renderer);
     return 0;
 }

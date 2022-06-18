@@ -64,4 +64,11 @@ X_INPUT_SET_STATE(XInputSetStateStub)
     return ERROR_DEVICE_NOT_CONNECTED;
 }
 
+
+struct read_file_result
+{
+    void *data;
+    size_t size;
+};
+
 #endif
