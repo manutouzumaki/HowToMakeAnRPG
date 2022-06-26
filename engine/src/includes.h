@@ -14,11 +14,14 @@
 // HEADERS files
 #include "defines.h"
 #include "input.h"
+#include "shader.h"
+include "texture.h"
 #include "renderer.h"
 
 // CPP files
 #include "input.cpp"
 #include "shader.cpp"
+#include "texture.cpp"
 #include "renderer.cpp"
 
 #endif

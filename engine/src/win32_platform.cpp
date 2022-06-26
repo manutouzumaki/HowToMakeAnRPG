@@ -207,11 +207,7 @@ internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width,
 
 }
 
-#if 0
-i32 WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, i32 CmdShow)
-#else
 int main()
-#endif
 {
     HINSTANCE Instance = GetModuleHandle(0);
 
@@ -233,7 +229,7 @@ int main()
     renderer Renderer = CreateRenderer();
 
     BindShader(Shader);
-    glm::mat4 ProjectionMat = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, 100.0f);
+    glm::mat4 ProjectionMat = glm::ortho(0.0f, (float)WINDOW_WIDTH, 0.0f, (float)WINDOW_HEIGHT, 0.0f, 100.0f);
     UpdateMat4f(Shader, "uProj", ProjectionMat);
 
     glm::vec3 Position = glm::vec3(0, 0, 20);
@@ -267,10 +263,13 @@ int main()
             {
                 float ColorR = (float)X / 100.0f;
                 float ColorG = (float)Y / 100.0f;
-                AddQuadToRenderQueue(&Renderer, (float)X*32.0f, (float)Y*32.0f, 32, 32, (f32)glm::radians(0.0f), ColorR, ColorG, 0, 1);
+                AddQuadToRenderQueue(&Renderer, (float)X*8.0f, (float)Y*8.0f, 8, 8, 0, ColorR, ColorG, 0, 1);
             }
         }
+        
+        AddQuadToRenderQueue(&Renderer, 200.0f, 200.0f, 100, 100, 0, 0, 1, 0, 1);
         RenderEnd(&Renderer);
+
   
         SwapBuffers(DeviceContext); 
         LastInput = CurrInput;

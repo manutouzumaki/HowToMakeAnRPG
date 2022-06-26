@@ -23,6 +23,8 @@ struct renderer
     u32 EBO;
     float *Vertices;
     i32 QuadCount;
+
+    shader *Shader;
 };
 
 #endif

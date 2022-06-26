@@ -18,17 +18,17 @@ internal void GenerateIndices(u32 *Indices)
     }
 }
 
-internal renderer CreateRenderer()
+internal renderer *RendererCreate()
 {
-    renderer Renderer = {};
+    renderer *Renderer = (renderer *)malloc(sizeof(renderer));
     
-    glGenVertexArrays(1, &Renderer.VAO);
-    glBindVertexArray(Renderer.VAO);
+    glGenVertexArrays(1, &Renderer->VAO);
+    glBindVertexArray(Renderer->VAO);
 
-    Renderer.Vertices = (float *)malloc(BATCH_SIZE * (VERTEX_SIZE_BYTES * 4));
+    Renderer->Vertices = (float *)malloc(BATCH_SIZE * (VERTEX_SIZE_BYTES * 4));
 
-    glGenBuffers(1, &Renderer.VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, Renderer.VBO);
+    glGenBuffers(1, &Renderer->VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     glBufferData(GL_ARRAY_BUFFER, BATCH_SIZE * (VERTEX_SIZE_BYTES * 4), 0, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(0, POS_SIZE, GL_FLOAT, GL_FALSE, VERTEX_SIZE_BYTES, (void *)POS_OFFSET);
@@ -53,12 +53,18 @@ internal renderer CreateRenderer()
     
 }
 
-internal void ShutdownRenderer(renderer *Renderer)
+internal void RendererDestroy(renderer *Renderer)
 {
     glDeleteVertexArrays(1, &Renderer->VAO);
     glDeleteBuffers(1, &Renderer->VBO);
     glDeleteBuffers(1, &Renderer->EBO);
     free(Renderer->Vertices);
+    free(Renderer);
+}
+
+internal void RendererSetShader(renderer *Renderer, shader *Shader)
+{
+    Renderer->Shader = Shader;
 }
 
 internal void FlushRenderQueue(renderer *Renderer)
@@ -68,25 +74,23 @@ internal void FlushRenderQueue(renderer *Renderer)
     Renderer->QuadCount = 0;
 }
 
-internal void RenderBegin(renderer *Renderer, u32 Shader)
+internal void RenderBegin(renderer *Renderer)
 {
-    BindShader(Shader);
+    BindShader(Renderer->Shader);
     glBindVertexArray(Renderer->VAO);
     glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
 }
 
 internal void RenderEnd(renderer *Renderer)
 {
+    BindShader(Renderer->Shader);
+    glBindVertexArray(Renderer->VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     FlushRenderQueue(Renderer);
 }
 
 internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 *Uvs)
 {
-    glm::mat4 TranslationMat = glm::translate(glm::mat4(1.0f), glm::vec3(XPos, YPos, 0.0f));
-    glm::mat4 RotationMat = glm::rotate(glm::mat4(1.0f), Angle, glm::vec3(0, 0, 1));
-    glm::mat4 ScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(Width, Height, 1.0f));
-    glm::mat4 ModelMat = TranslationMat * RotationMat * ScaleMat;
-
     if(Renderer->QuadCount >= BATCH_SIZE)
     {
         FlushRenderQueue(Renderer);
@@ -103,12 +107,12 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         else if(Index == 3)
             Y = 0.5f;
         glm::vec2 CurrentP = glm::vec2(X, Y);
-        CurrentP.x *= Width;
-        CurrentP.y *= Height;
         if(Angle > 0.0f)
         {
             CurrentP = glm::rotate(CurrentP, Angle);
         }
+        CurrentP.x *= Width;
+        CurrentP.y *= Height;
         CurrentP.x += XPos;
         CurrentP.y += YPos;
         *Vertices++ = CurrentP.x;
@@ -144,7 +148,6 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         glm::vec2 CurrentP = glm::vec2(X, Y);
         if(Angle > 0.0f)
         {
-            // TODO: add a faster rotate function
             CurrentP = glm::rotate(CurrentP, Angle);
         }
         CurrentP.x *= Width;
