@@ -1,4 +1,3 @@
-
 shader *ShaderCreate(const char *VertexFilepath, const char *FragmentFilepath)
 {
     shader *Shader = (shader *)malloc(sizeof(shader));

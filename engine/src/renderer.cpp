@@ -1,3 +1,5 @@
+global_variable i32 TextureSlots[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+
 internal void LoadElementIndices(u32 *Indices, i32 Index)
 {
     int OffsetArrayIndex = 6 * Index;
@@ -21,6 +23,7 @@ internal void GenerateIndices(u32 *Indices)
 internal renderer *RendererCreate()
 {
     renderer *Renderer = (renderer *)malloc(sizeof(renderer));
+    memset(Renderer, 0, sizeof(Renderer));
     
     glGenVertexArrays(1, &Renderer->VAO);
     glBindVertexArray(Renderer->VAO);
@@ -43,11 +46,15 @@ internal renderer *RendererCreate()
     u32 *Indices = (u32 *)malloc(BATCH_SIZE * (sizeof(u32) * 6));
     GenerateIndices(Indices);
 
-    glGenBuffers(1, &Renderer.EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer.EBO);
+    glGenBuffers(1, &Renderer->EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, BATCH_SIZE * (sizeof(u32) * 6), Indices, GL_STATIC_DRAW); 
 
     free(Indices);
+
+    u32 BlankColor = 0xFFFFFFFF;
+    texture *BlankTexture = TextureCreateFromBuffer(&BlankColor, 1, 1); 
+    Renderer->Textures[Renderer->TextureCount++] = BlankTexture;
 
     return Renderer;
     
@@ -59,7 +66,13 @@ internal void RendererDestroy(renderer *Renderer)
     glDeleteBuffers(1, &Renderer->VBO);
     glDeleteBuffers(1, &Renderer->EBO);
     free(Renderer->Vertices);
+    TextureDestroy(Renderer->Textures[0]);
     free(Renderer);
+}
+
+internal void RendererAddTexture(renderer *Renderer, texture *Texture)
+{
+    Renderer->Textures[Renderer->TextureCount++] = Texture;
 }
 
 internal void RendererSetShader(renderer *Renderer, shader *Shader)
@@ -69,33 +82,59 @@ internal void RendererSetShader(renderer *Renderer, shader *Shader)
 
 internal void FlushRenderQueue(renderer *Renderer)
 {
+    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, (Renderer->QuadCount * 4) * VERTEX_SIZE_BYTES, Renderer->Vertices); 
+
+    for(i32 Index = 0; Index < Renderer->TextureCount; ++Index)
+    {
+        glActiveTexture(GL_TEXTURE0 + Index);
+        TextureBind(Renderer->Textures[Index]);
+    }
     glDrawElements(GL_TRIANGLES, Renderer->QuadCount * 6, GL_UNSIGNED_INT, 0);
     Renderer->QuadCount = 0;
 }
 
 internal void RenderBegin(renderer *Renderer)
 {
-    BindShader(Renderer->Shader);
+    ShaderBind(Renderer->Shader);
     glBindVertexArray(Renderer->VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
 }
 
 internal void RenderEnd(renderer *Renderer)
 {
-    BindShader(Renderer->Shader);
+    ShaderBind(Renderer->Shader);
     glBindVertexArray(Renderer->VAO);
     glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     FlushRenderQueue(Renderer);
 }
 
-internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 *Uvs)
+internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, texture *Texture, f32 *UVs, i32 SpriteIndex)
 {
     if(Renderer->QuadCount >= BATCH_SIZE)
     {
         FlushRenderQueue(Renderer);
     }
+    i32 TextureID = 0;
+    for(i32 Index = 0; Index < Renderer->TextureCount; ++Index)
+    {
+        if(Texture->ID == Renderer->Textures[Index]->ID)
+        {
+            TextureID = Index;
+        }
+    }
+
     f32 *Vertices = Renderer->Vertices + (Renderer->QuadCount * VERTEX_SIZE * 4);
+
+    f32 *SpriteUVs = UVs + (SpriteIndex * 4);
+    f32 UVsArray[8] = 
+    {
+        SpriteUVs[2], SpriteUVs[3],
+        SpriteUVs[2], SpriteUVs[1],
+        SpriteUVs[0], SpriteUVs[1],
+        SpriteUVs[0], SpriteUVs[3]
+    };
+    f32 *UVsPtr = UVsArray;
+
     f32 X = 0.5f;
     f32 Y = 0.5f; 
     for(i32 Index = 0; Index < 4; ++Index)
@@ -121,8 +160,8 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         *Vertices++ = 1.0f;
         *Vertices++ = 1.0f;
         *Vertices++ = 1.0f;
-        *Vertices++ = *Uvs++;
-        *Vertices++ = *Uvs++;
+        *Vertices++ = *UVsPtr++;
+        *Vertices++ = *UVsPtr++;
         *Vertices++ = 0.0f;
     }
     Renderer->QuadCount++; 

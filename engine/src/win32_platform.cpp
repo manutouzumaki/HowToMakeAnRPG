@@ -225,10 +225,11 @@ int main()
     input LastInput = {};
     input CurrInput = {};
 
-    u32 Shader = CreateShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
-    renderer Renderer = CreateRenderer();
+    shader *Shader = ShaderCreate("../shaders/vertex.glsl", "../shaders/fragment.glsl");
+    renderer *Renderer = RendererCreate();
 
-    BindShader(Shader);
+    ShaderBind(Shader);
+    RendererSetShader(Renderer, Shader);
     glm::mat4 ProjectionMat = glm::ortho(0.0f, (float)WINDOW_WIDTH, 0.0f, (float)WINDOW_HEIGHT, 0.0f, 100.0f);
     UpdateMat4f(Shader, "uProj", ProjectionMat);
 
@@ -256,19 +257,19 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // TODO: Render
-        RenderBegin(&Renderer, Shader);
+        RenderBegin(Renderer);
         for(i32 X = 0; X < 100; ++X)
         {
             for(i32 Y = 0; Y < 100; ++Y)
             {
                 float ColorR = (float)X / 100.0f;
                 float ColorG = (float)Y / 100.0f;
-                AddQuadToRenderQueue(&Renderer, (float)X*8.0f, (float)Y*8.0f, 8, 8, 0, ColorR, ColorG, 0, 1);
+                AddQuadToRenderQueue(Renderer, (float)X*8.0f, (float)Y*8.0f, 8, 8, 0, ColorR, ColorG, 0, 1);
             }
         }
         
-        AddQuadToRenderQueue(&Renderer, 200.0f, 200.0f, 100, 100, 0, 0, 1, 0, 1);
-        RenderEnd(&Renderer);
+        AddQuadToRenderQueue(Renderer, 200.0f, 200.0f, 100, 100, 0, 0, 1, 0, 1);
+        RenderEnd(Renderer);
 
   
         SwapBuffers(DeviceContext); 
@@ -278,6 +279,6 @@ int main()
 
         printf("fps:%d\n", (int)Fps);
     }
-    ShutdownRenderer(&Renderer);
+    RendererDestroy(Renderer);
     return 0;
 }

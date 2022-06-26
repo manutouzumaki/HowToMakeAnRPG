@@ -15,7 +15,7 @@
 #include "defines.h"
 #include "input.h"
 #include "shader.h"
-include "texture.h"
+#include "texture.h"
 #include "renderer.h"
 
 // CPP files

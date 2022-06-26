@@ -25,6 +25,9 @@ struct renderer
     i32 QuadCount;
 
     shader *Shader;
+
+    texture *Textures[8];
+    i32 TextureCount;
 };
 
 #endif

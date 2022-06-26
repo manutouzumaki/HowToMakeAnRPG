@@ -6,23 +6,13 @@ inline u32 BitScanForward(u32 Mask)
     return (u32)Shift;
 }
 
-internal texture *TextureCreate(const char *Filepath)
-{
-    read_file_result File = Win32ReadEntireFile(Filepath);
-    bmp_header *BmpHeader = (bmp_header *)File.data; 
-    u8 *data = (u8)File.data + BmpHeader->BitmapOffset;
-    texture *Texture = TextureCreateFromBuffer(data, BmpHeader->Width, BmpHeader->Height);
-    free(File.data);
-    return Texture;
-}
-
 internal texture *TextureCreateFromBuffer(void *Buffer, i32 Width, i32 Height)
 {
     texture *Texture = (texture *)malloc(sizeof(texture));
     Texture->Width = Width;
     Texture->Height = Height;
-    glGenTxtures(1, &Texture->ID);
-    glBindTextures(GL_TEXTURE_2D, Texture->ID);
+    glGenTextures(1, &Texture->ID);
+    glBindTexture(GL_TEXTURE_2D, Texture->ID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -31,10 +21,19 @@ internal texture *TextureCreateFromBuffer(void *Buffer, i32 Width, i32 Height)
     return Texture;
 }
 
+internal texture *TextureCreate(const char *Filepath)
+{
+    read_file_result File = Win32ReadEntireFile(Filepath);
+    bmp_header *BmpHeader = (bmp_header *)File.data; 
+    u8 *data = (u8 *)File.data + BmpHeader->BitmapOffset;
+    texture *Texture = TextureCreateFromBuffer(data, BmpHeader->Width, BmpHeader->Height);
+    free(File.data);
+    return Texture;
+}
 
 internal void TextureDestroy(texture *Texture)
 {
-    glDeleteTexture(1, &Texture->ID);
+    glDeleteTextures(1, &Texture->ID);
     free(Texture);
 }
 
@@ -55,7 +54,7 @@ internal f32 *GenerateUVs(texture *Texture, i32 TileWidth, i32 TileHeight)
     i32 Cols = Texture->Width / TileWidth;
     i32 Rows = Texture->Height / TileHeight;
 
-    f32 *UVs = malloc(Cols * Rows * 4 * sizeof(f32));
+    f32 *UVs = (f32 *)malloc(Cols * Rows * 4 * sizeof(f32));
 
     f32 Ux = 0.0f;
     f32 Uy = 0.0f;
