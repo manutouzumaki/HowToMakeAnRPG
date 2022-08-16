@@ -1,4 +1,4 @@
-shader *ShaderCreate(const char *VertexFilepath, const char *FragmentFilepath)
+internal shader *ShaderCreate(const char *VertexFilepath, const char *FragmentFilepath)
 {
     shader *Shader = (shader *)malloc(sizeof(shader));
     read_file_result VertexResult = Win32ReadEntireFile(VertexFilepath);

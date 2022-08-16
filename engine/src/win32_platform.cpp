@@ -2,6 +2,11 @@
 
 global_variable bool GlobalRunning;
 global_variable lua_State *GlobalLuaState;
+global_variable i32 WindowWidth; 
+global_variable i32 WindowHeight;
+
+global_variable const char **GlobalTextureNames;
+global_variable i32 GlobalTextureCount;
 
 LRESULT CALLBACK WindowProc(HWND Window, u32 Msg, WPARAM WParam, LPARAM LParam)
 {
@@ -177,7 +182,6 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext, i32 width, i32 hei
             OutputDebugString("Error: glad failed Initialize\n");
         }
     }
-
     glViewport(0, 0, width, height);
 }
 
@@ -205,9 +209,18 @@ internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width,
                                 Rect.bottom - Rect.top,
                                 0, 0, Instance, 0);
     return Window;
-
 }
 
+i32 StringLength(const char *String)
+{
+    i32 Count = 0;
+    char *Letter = (char *)String;
+    while(*Letter++ != '\0')
+    {
+        ++Count;
+    }
+    return Count;
+}
 
 internal i32 DrawBox2d(lua_State *LuaState)
 {
@@ -226,18 +239,113 @@ internal i32 DrawBox2d(lua_State *LuaState)
     return 0;
 }
 
-internal i32 SetFloatArray(lua_State *LuaState)
+internal i32 DrawTexture(lua_State *LuaState)
+{
+    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -6);
+    i32 X = (i32)lua_tonumber(LuaState, -5);
+    i32 Y = (i32)lua_tonumber(LuaState, -4);
+    i32 W = (i32)lua_tonumber(LuaState, -3);
+    i32 H = (i32)lua_tonumber(LuaState, -2);
+    const char *Name = (const char *)lua_tostring(LuaState, -1);
+    texture_info TextureInfo = GlobalTextureAtlas.Info[Name]; 
+    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), &TextureInfo.Uvs[0]);
+    return 0;
+}
+
+internal i32 DrawSprite(lua_State *LuaState)
+{
+    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -10);
+    i32 X = (i32)lua_tonumber(LuaState, -9);
+    i32 Y = (i32)lua_tonumber(LuaState, -8);
+    i32 W = (i32)lua_tonumber(LuaState, -7);
+    i32 H = (i32)lua_tonumber(LuaState, -6);
+    const char *Name = (const char *)lua_tostring(LuaState, -5);
+    f32 RelU0 = (f32)lua_tonumber(LuaState, -4); 
+    f32 RelV0 = (f32)lua_tonumber(LuaState, -3); 
+    f32 RelU1 = (f32)lua_tonumber(LuaState, -2); 
+    f32 RelV1 = (f32)lua_tonumber(LuaState, -1); 
+    texture_info TextureInfo = GlobalTextureAtlas.Info[Name];
+    
+    f32 AbsU0 = TextureInfo.Uvs[0];
+    f32 AbsV0 = TextureInfo.Uvs[1];
+    f32 AbsU1 = TextureInfo.Uvs[2];
+    f32 AbsV1 = TextureInfo.Uvs[3];
+
+    f32 ULength = AbsU1 - AbsU0;
+    f32 VLength = AbsV1 - AbsV0;
+
+    f32 U0Offset = ULength * RelU0;
+    f32 V0Offset = VLength * RelV0;
+    f32 U1Offset = ULength * RelU1;
+    f32 V1Offset = VLength * RelV1;
+
+    f32 Uvs[4] = {
+        AbsU0 + U0Offset, AbsV0 + V0Offset, 
+        AbsU0 + U1Offset, AbsV0 + V1Offset 
+    };
+
+    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), Uvs);
+    return 0;
+}
+
+internal i32 GetTextureInfo(lua_State *LuaState)
+{
+    const char *Name = (const char *)lua_tostring(LuaState, -1);
+    texture_info Info = GlobalTextureAtlas.Info[Name];
+    lua_pushinteger(LuaState, Info.Width);
+    lua_pushinteger(LuaState, Info.Height);
+    return 2;
+}
+
+internal i32 GetDisplayInfo(lua_State *LuaState)
+{
+    lua_pushinteger(LuaState, WindowWidth);
+    lua_pushinteger(LuaState, WindowHeight);
+    return 2;
+}
+
+internal i32 SetStringArray(lua_State *LuaState)
 {
     lua_len(LuaState, -1);
-    i32 ArrayCount = (i32)lua_tonumber(LuaState, -1);
-    f32 *FloatArray =  (f32 *)malloc(ArrayCount * sizeof(f32)); 
-    for(i32 i = 1; i <= ArrayCount; ++i)
+    i32 TextureCount = (i32)lua_tonumber(LuaState, -1);
+    GlobalTextureCount = TextureCount;
+    GlobalTextureNames = (const char **)malloc(sizeof(const char *) * TextureCount);
+    memset(GlobalTextureNames, 0, sizeof(const char *) * TextureCount);
+    for(i32 i = 1; i <= TextureCount; ++i)
     {
         lua_pushinteger(LuaState, i);
         lua_gettable(LuaState, 1);
-        f32 b = (f32)lua_tonumber(LuaState, -1);
-        printf("number: %f\n", b);
+        const char *SrcPath = (const char *)lua_tostring(LuaState, -1);
+        i32 PathLength = StringLength(SrcPath);
+        char *DstPath = (char *)malloc(sizeof(char) * PathLength + 1);
+        DstPath[PathLength] = '\0';
+        memcpy(DstPath, SrcPath, sizeof(char) * PathLength);
+        GlobalTextureNames[i - 1] = DstPath;
     }
+    return 0;
+}
+
+internal i32 Include(lua_State *LuaState)
+{
+    const char *Path = "../../game/";
+    const char *File = (const char *)lua_tostring(LuaState, -1);
+    i32 PathLength = StringLength(Path);
+    i32 FileLength = StringLength(File);
+    
+    char *FilePath = (char *)malloc(sizeof(char) * PathLength + FileLength + 1);
+    FilePath[PathLength + FileLength] = '\0';
+    memcpy(FilePath, Path, sizeof(char) * PathLength);
+    memcpy(FilePath + PathLength, File, sizeof(char) * FileLength);
+    
+    if(luaL_dofile(GlobalLuaState, FilePath) != LUA_OK) 
+    {
+        luaL_error(GlobalLuaState, "Error INCLUDING file: %s\n", lua_tostring(GlobalLuaState, -1));
+        return 0;
+    }
+
+    printf("Include: %s\n", File);
+
+    free(FilePath);
     return 0;
 }
 
@@ -250,14 +358,30 @@ int main()
     GlobalLuaState = luaL_newstate();
     luaL_openlibs(GlobalLuaState);
 
-    lua_pushcfunction(GlobalLuaState, CreateRenderer);
-    lua_setglobal(GlobalLuaState, "CreateRenderer");
+    lua_pushcfunction(GlobalLuaState, RendererCreate);
+    lua_setglobal(GlobalLuaState, "RendererCreate");
 
     lua_pushcfunction(GlobalLuaState, DrawBox2d);
     lua_setglobal(GlobalLuaState, "DrawBox2d");
-    
-    lua_pushcfunction(GlobalLuaState, SetFloatArray);
-    lua_setglobal(GlobalLuaState, "SetFloatArray");
+
+    lua_pushcfunction(GlobalLuaState, DrawTexture);
+    lua_setglobal(GlobalLuaState, "DrawTexture");
+
+    lua_pushcfunction(GlobalLuaState, DrawSprite);
+    lua_setglobal(GlobalLuaState, "DrawSprite");
+   
+    lua_pushcfunction(GlobalLuaState, GetTextureInfo);
+    lua_setglobal(GlobalLuaState, "GetTextureInfo");
+
+    lua_pushcfunction(GlobalLuaState, GetDisplayInfo);
+    lua_setglobal(GlobalLuaState, "GetDisplayInfo");
+
+    lua_pushcfunction(GlobalLuaState, SetStringArray);
+    lua_setglobal(GlobalLuaState, "SetStringArray");
+
+    lua_pushcfunction(GlobalLuaState, Include);
+    lua_setglobal(GlobalLuaState, "Include");
+
 
     if(luaL_dofile(GlobalLuaState, "../../game/settings.lua") != LUA_OK) 
     {
@@ -269,8 +393,8 @@ int main()
     lua_getglobal(GlobalLuaState, "height");
 
     const char *WindowName = lua_tostring(GlobalLuaState, -3);
-    i32 WindowWidth = (i32)lua_tointeger(GlobalLuaState, -2);
-    i32 WindowHeight = (i32)lua_tointeger(GlobalLuaState, -1);
+    WindowWidth = (i32)lua_tointeger(GlobalLuaState, -2);
+    WindowHeight = (i32)lua_tointeger(GlobalLuaState, -1);
     
     Win32LoadXInput();
     HWND Window = Win32InitializeWindow(Instance, 0, 0, WindowWidth, WindowHeight, WindowName);
@@ -280,17 +404,20 @@ int main()
     ShowWindow(Window, true);
     
     LARGE_INTEGER Frequency = {};
-    QueryPerformanceFrequency(&Frequency);
-    
-    
+    QueryPerformanceFrequency(&Frequency); 
     // TODO: Initialize
-    
+     
     // load assets
     if(luaL_dofile(GlobalLuaState, "../../game/assets.lua") != LUA_OK)
     {
         luaL_error(GlobalLuaState, "Error loading ASSETS file: %s\n", lua_tostring(GlobalLuaState, -1));
         return EXIT_FAILURE;
     }
+
+    LoadTexturesToAtlas(GlobalTextureNames, GlobalTextureCount);
+    texture *GrassTexture = TextureCreateFromBuffer((unsigned char *)GlobalTextureAtlas.Data,
+                                                                     GlobalTextureAtlas.Width,
+                                                                     GlobalTextureAtlas.Height, 4);
 
     if(luaL_dofile(GlobalLuaState, "../../game/main.lua") != LUA_OK) 
     {
@@ -301,26 +428,13 @@ int main()
     input LastInput = {};
     input CurrInput = {};
 
-    shader *Shader = ShaderCreate("../shaders/vertex.glsl", "../shaders/fragment.glsl");
-    //texture *GrassTexture = CreateTexture("../../game/assets/grass_tile.png");
-
-    const char *textures[] = {
-        "../../game/assets/grass_tile.png",
-        "../../game/assets/hello_world.png"
-    };
-    LoadTexturesToAtlas(textures, ArrayCount(textures));
-    texture *GrassTexture = CreateTextureFromBuffer((unsigned char *)GlobalTextureAtlas.Data,
-                                                    GlobalTextureAtlas.Width,
-                                                    GlobalTextureAtlas.Height, 4);
-
-    UpdateInt(Shader, "texture1", 0);
-
     lua_getglobal(GlobalLuaState, "gRenderer");
     renderer *Renderer = (renderer *)lua_tointeger(GlobalLuaState, -1);
 
+    shader *Shader = ShaderCreate("../shaders/vertex.glsl", "../shaders/fragment.glsl");
     ShaderBind(Shader);
+    UpdateInt(Shader, "texture1", 0);
     glm::mat4 ProjectionMat = glm::ortho(-(f32)WindowWidth*0.5f, (f32)WindowWidth*0.5f, -(f32)WindowHeight*0.5f, (f32)WindowHeight*0.5f, 0.0f, 100.0f);
-
     UpdateMat4f(Shader, "uProj", ProjectionMat);
 
     glm::vec3 Position = glm::vec3(0, 0, 20);
@@ -356,18 +470,6 @@ int main()
             lua_pushnumber(GlobalLuaState, DeltaTime);
             lua_pcall(GlobalLuaState, 1, 0, 0);
         }
-        
-        f32 Uvs0[4] = {
-            16.0f / 1200.0f, 0.0f,
-            600.0f / 1200.0f, 600.0f/1200.0f
-        };
-        AddQuadToRenderQueue(Renderer, (-(f32)WindowWidth*0.5f) + 110, 0, 100, 100, 0, Uvs0);
-        f32 Uvs1[4] = {
-            0.0f, 0.0f,
-            16.0f / 1200.0f, 16.0f/1200.0f
-        };
-        AddQuadToRenderQueue(Renderer, (-(f32)WindowWidth*0.5f) + 110, 120, 100, 100, 0, Uvs1);
-        
 
         RenderEnd(Renderer);
 
@@ -379,7 +481,8 @@ int main()
     }
     
     RendererDestroy(Renderer);
-    DestroyTexture(GrassTexture);
+    TextureDestroy(GrassTexture);
+    ShaderDestroy(Shader);
     lua_close(GlobalLuaState);
     return 0;
 }

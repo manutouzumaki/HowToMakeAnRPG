@@ -1,6 +1,27 @@
 global_variable texture_atlas GlobalTextureAtlas;
 
-void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
+internal const char *GetTextureNameFromPath(const char *Path)
+{
+    char *Letter = (char *)Path;
+    i32 Offset = 0;
+    i32 BarsFound = 0;
+    while(*Letter++ != '\0')
+    {
+        Offset++;
+        if(*Letter == '/')
+        {
+            BarsFound++;
+        }
+        if(BarsFound == 4)
+        {
+            Offset++;
+            break;
+        }
+    }
+    return Path + Offset; 
+}
+
+internal void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
 {
     i32 AtlasWidth = 128;
     i32 AtlasHeight = 128;
@@ -10,6 +31,7 @@ void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
         Textures[i].Data = stbi_load(Path[i], &Textures[i].Width, &Textures[i].Height, &Textures[i].Channels, 0);
         AtlasWidth = Textures[i].Width > AtlasWidth ? Textures[i].Width : AtlasWidth;
         AtlasHeight = Textures[i].Height > AtlasHeight ? Textures[i].Height : AtlasHeight;
+        Textures[i].Name = GetTextureNameFromPath(Path[i]); 
     }
     AtlasWidth *= 2;
     AtlasHeight *= 2;
@@ -19,7 +41,6 @@ void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
     GlobalTextureAtlas.Width = AtlasWidth;
     GlobalTextureAtlas.Height = AtlasHeight;
     GlobalTextureAtlas.TextureCount = TextureCount;
-
 
     i32 OffsetX = 0;
     i32 OffsetY = 0;
@@ -38,6 +59,16 @@ void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
                 Dest[y * AtlasWidth + x] = A << 24 | B << 16 | G << 8 | R;
             }
         }
+        // TODO: save the uvs to select the texture
+        texture_info Info;
+        Info.Uvs.push_back((f32)OffsetX / (f32)AtlasWidth);
+        Info.Uvs.push_back((f32)OffsetY / (f32)AtlasHeight);
+        Info.Uvs.push_back((f32)(Textures[i].Width + OffsetX) / (f32)AtlasWidth);
+        Info.Uvs.push_back((f32)(Textures[i].Height + OffsetY) / (f32)AtlasHeight);
+        Info.Width = Textures[i].Width;
+        Info.Height = Textures[i].Height;
+        GlobalTextureAtlas.Info[Textures[i].Name] = Info;
+
         if(OffsetX + Textures[i].Width <= AtlasWidth)
         {
             OffsetX += Textures[i].Width;
@@ -51,7 +82,7 @@ void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
     free(Textures);
 }
 
-texture *CreateTexture(const char *Path)
+internal texture *TextureCreate(const char *Path)
 {
     texture *Texture = (texture *)malloc(sizeof(texture));
     memset(Texture, 0, sizeof(texture));
@@ -81,7 +112,7 @@ texture *CreateTexture(const char *Path)
     return Texture;    
 }
 
-texture *CreateTextureFromBuffer(unsigned char *Buffer, i32 Width, i32 Height, i32 Channels)
+internal texture *TextureCreateFromBuffer(unsigned char *Buffer, i32 Width, i32 Height, i32 Channels)
 {
     texture *Texture = (texture *)malloc(sizeof(texture));
     memset(Texture, 0, sizeof(texture));
@@ -113,17 +144,17 @@ texture *CreateTextureFromBuffer(unsigned char *Buffer, i32 Width, i32 Height, i
 
 
 
-void DestroyTexture(texture *Texture)
+internal void TextureDestroy(texture *Texture)
 {
     glDeleteTextures(1, &Texture->ID);
     free(Texture);
 }
 
-void TextureBind(texture *Texture) {
+internal void TextureBind(texture *Texture) {
     glBindTexture(GL_TEXTURE_2D, Texture->ID);
 }
 
-void TextureUnbind() {
+internal void TextureUnbind() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 

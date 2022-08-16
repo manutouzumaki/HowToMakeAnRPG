@@ -16,7 +16,14 @@ struct raw_texture
     i32 Width;
     i32 Height;
     i32 Channels;
+    const char *Name;
+};
 
+struct texture_info
+{
+    i32 Width;
+    i32 Height;
+    std::vector<f32> Uvs;
 };
 
 struct texture_atlas
@@ -25,7 +32,7 @@ struct texture_atlas
     i32 Width;
     i32 Height;
     i32 TextureCount;
-    std::map<std::string, std::vector<f32>> Uvs;
+    std::map<std::string, texture_info> Info;
 };
 
 #endif

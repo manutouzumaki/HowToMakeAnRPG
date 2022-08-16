@@ -20,7 +20,7 @@ internal void GenerateIndices(u32 *Indices)
     }
 }
 
-internal i32 CreateRenderer(lua_State *LuaState)
+internal i32 RendererCreate(lua_State *LuaState)
 {
     renderer *Renderer = (renderer *)malloc(sizeof(renderer));
     memset(Renderer, 0, sizeof(renderer)); 

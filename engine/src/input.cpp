@@ -73,3 +73,4 @@ internal read_file_result Win32ReadEntireFile(const char *Filepath)
     Result = {};
     return Result;
 }
+
