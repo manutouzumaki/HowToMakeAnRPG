@@ -18,17 +18,18 @@ internal void GenerateIndices(u32 *Indices)
     }
 }
 
-internal renderer CreateRenderer()
+internal i32 CreateRenderer(lua_State *LuaState)
 {
-    renderer Renderer = {};
-    
-    glGenVertexArrays(1, &Renderer.VAO);
-    glBindVertexArray(Renderer.VAO);
+    renderer *Renderer = (renderer *)malloc(sizeof(renderer));
+    memset(Renderer, 0, sizeof(renderer)); 
 
-    Renderer.Vertices = (float *)malloc(BATCH_SIZE * (VERTEX_SIZE_BYTES * 4));
+    glGenVertexArrays(1, &Renderer->VAO);
+    glBindVertexArray(Renderer->VAO);
 
-    glGenBuffers(1, &Renderer.VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, Renderer.VBO);
+    Renderer->Vertices = (float *)malloc(BATCH_SIZE * (VERTEX_SIZE_BYTES * 4));
+
+    glGenBuffers(1, &Renderer->VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     glBufferData(GL_ARRAY_BUFFER, BATCH_SIZE * (VERTEX_SIZE_BYTES * 4), 0, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(0, POS_SIZE, GL_FLOAT, GL_FALSE, VERTEX_SIZE_BYTES, (void *)POS_OFFSET);
@@ -43,13 +44,16 @@ internal renderer CreateRenderer()
     u32 *Indices = (u32 *)malloc(BATCH_SIZE * (sizeof(u32) * 6));
     GenerateIndices(Indices);
 
-    glGenBuffers(1, &Renderer.EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer.EBO);
+    glGenBuffers(1, &Renderer->EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, BATCH_SIZE * (sizeof(u32) * 6), Indices, GL_STATIC_DRAW); 
 
     free(Indices);
-
-    return Renderer;
+    
+    u64 addres = (u64)Renderer;
+    lua_pushinteger(LuaState, addres);
+    
+    return 1;
     
 }
 
@@ -59,6 +63,7 @@ internal void ShutdownRenderer(renderer *Renderer)
     glDeleteBuffers(1, &Renderer->VBO);
     glDeleteBuffers(1, &Renderer->EBO);
     free(Renderer->Vertices);
+    free(Renderer);
 }
 
 internal void FlushRenderQueue(renderer *Renderer)
@@ -92,6 +97,15 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         FlushRenderQueue(Renderer);
     }
     f32 *Vertices = Renderer->Vertices + (Renderer->QuadCount * VERTEX_SIZE * 4);
+
+    f32 UvsArray[8] = {
+        Uvs[2], Uvs[3],
+        Uvs[2], Uvs[1],
+        Uvs[0], Uvs[1],
+        Uvs[0], Uvs[3]
+    };
+    f32 *UvsPtr = UvsArray;
+
     f32 X = 0.5f;
     f32 Y = 0.5f; 
     for(i32 Index = 0; Index < 4; ++Index)
@@ -117,9 +131,9 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         *Vertices++ = 1.0f;
         *Vertices++ = 1.0f;
         *Vertices++ = 1.0f;
-        *Vertices++ = *Uvs++;
-        *Vertices++ = *Uvs++;
-        *Vertices++ = 0.0f;
+        *Vertices++ = *UvsPtr++;
+        *Vertices++ = *UvsPtr++;
+        *Vertices++ = 1.0f;
     }
     Renderer->QuadCount++; 
 }

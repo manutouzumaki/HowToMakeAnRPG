@@ -84,11 +84,11 @@ internal void UpdateMat4f(u32 Shader, const char *VarName, glm::mat4 Matrix)
     glUniformMatrix4fv(VarLoc, 1, false, &Matrix[0][0]);
 }
 
-internal void UpdateTexture(u32 Shader, const char *VarName, u32 ID)
+internal void UpdateInt(u32 Shader, const char *VarName, u32 Value)
 { 
     i32 VarLoc = glGetUniformLocation(Shader, VarName);
     BindShader(Shader);
-    glUniform1i(VarLoc, ID);
+    glUniform1i(VarLoc, Value);
 }
 
 internal void UpdateIntArray(u32 Shader, const char *VarName, i32 Size, i32 *Array)

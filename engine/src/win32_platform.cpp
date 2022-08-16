@@ -1,6 +1,7 @@
 #include "includes.h"
 
 global_variable bool GlobalRunning;
+global_variable lua_State *GlobalLuaState;
 
 LRESULT CALLBACK WindowProc(HWND Window, u32 Msg, WPARAM WParam, LPARAM LParam)
 {
@@ -130,7 +131,7 @@ internal void Win32ProcessMessages(input *CurrInput, input *LastInput)
 
 }
 
-internal void Win32InitializeOpenGLContext(HDC DeviceContext)
+internal void Win32InitializeOpenGLContext(HDC DeviceContext, i32 width, i32 height)
 {
     PIXELFORMATDESCRIPTOR PixelFormat = {};
     PixelFormat.nSize = sizeof(PixelFormat);
@@ -168,7 +169,7 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext)
                     (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
         if(wglSwapIntervalEXT)
         {
-            wglSwapIntervalEXT(0);
+            wglSwapIntervalEXT(1);
         }
     
         if(!gladLoadGL())
@@ -177,7 +178,7 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext)
         }
     }
 
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glViewport(0, 0, width, height);
 }
 
 internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width, i32 Height, const char *Name)
@@ -207,33 +208,118 @@ internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width,
 
 }
 
-#if 0
-i32 WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, i32 CmdShow)
-#else
+
+internal i32 DrawBox2d(lua_State *LuaState)
+{
+    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -6);
+    i32 X = (i32)lua_tonumber(LuaState, -5);
+    i32 Y = (i32)lua_tonumber(LuaState, -4);
+    i32 W = (i32)lua_tonumber(LuaState, -3);
+    i32 H = (i32)lua_tonumber(LuaState, -2);
+    lua_getfield(LuaState, -1, "r");
+    f32 R = (f32)lua_tonumber(LuaState, -1);
+    lua_getfield(LuaState, -2, "g");
+    f32 G = (f32)lua_tonumber(LuaState, -1);
+    lua_getfield(LuaState, -3, "b");
+    f32 B = (f32)lua_tonumber(LuaState, -1);
+    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), R, G, B, 1);
+    return 0;
+}
+
+internal i32 SetFloatArray(lua_State *LuaState)
+{
+    lua_len(LuaState, -1);
+    i32 ArrayCount = (i32)lua_tonumber(LuaState, -1);
+    f32 *FloatArray =  (f32 *)malloc(ArrayCount * sizeof(f32)); 
+    for(i32 i = 1; i <= ArrayCount; ++i)
+    {
+        lua_pushinteger(LuaState, i);
+        lua_gettable(LuaState, 1);
+        f32 b = (f32)lua_tonumber(LuaState, -1);
+        printf("number: %f\n", b);
+    }
+    return 0;
+}
+
+/* THE ENTRY POINT OF THE ENGINE */
 int main()
-#endif
 {
     HINSTANCE Instance = GetModuleHandle(0);
 
+    // TODO: load C-API test...
+    GlobalLuaState = luaL_newstate();
+    luaL_openlibs(GlobalLuaState);
+
+    lua_pushcfunction(GlobalLuaState, CreateRenderer);
+    lua_setglobal(GlobalLuaState, "CreateRenderer");
+
+    lua_pushcfunction(GlobalLuaState, DrawBox2d);
+    lua_setglobal(GlobalLuaState, "DrawBox2d");
+    
+    lua_pushcfunction(GlobalLuaState, SetFloatArray);
+    lua_setglobal(GlobalLuaState, "SetFloatArray");
+
+    if(luaL_dofile(GlobalLuaState, "../../game/settings.lua") != LUA_OK) 
+    {
+        luaL_error(GlobalLuaState, "Error reading SETTINGS file: %s\n", lua_tostring(GlobalLuaState, -1));
+        return EXIT_FAILURE;
+    }
+    lua_getglobal(GlobalLuaState, "name");
+    lua_getglobal(GlobalLuaState, "width");
+    lua_getglobal(GlobalLuaState, "height");
+
+    const char *WindowName = lua_tostring(GlobalLuaState, -3);
+    i32 WindowWidth = (i32)lua_tointeger(GlobalLuaState, -2);
+    i32 WindowHeight = (i32)lua_tointeger(GlobalLuaState, -1);
+    
     Win32LoadXInput();
-    HWND Window = Win32InitializeWindow(Instance, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, "HowToMakeAnRPG");
+    HWND Window = Win32InitializeWindow(Instance, 0, 0, WindowWidth, WindowHeight, WindowName);
     HDC DeviceContext = GetDC(Window);
-    Win32InitializeOpenGLContext(DeviceContext);
+    Win32InitializeOpenGLContext(DeviceContext, WindowWidth, WindowHeight);
+    stbi_set_flip_vertically_on_load(TRUE);
     ShowWindow(Window, true);
     
     LARGE_INTEGER Frequency = {};
     QueryPerformanceFrequency(&Frequency);
     
     
-    // TODO: Initialize 
+    // TODO: Initialize
+    
+    // load assets
+    if(luaL_dofile(GlobalLuaState, "../../game/assets.lua") != LUA_OK)
+    {
+        luaL_error(GlobalLuaState, "Error loading ASSETS file: %s\n", lua_tostring(GlobalLuaState, -1));
+        return EXIT_FAILURE;
+    }
+
+    if(luaL_dofile(GlobalLuaState, "../../game/main.lua") != LUA_OK) 
+    {
+        luaL_error(GlobalLuaState, "Error reading MAIN file: %s\n", lua_tostring(GlobalLuaState, -1));
+        return EXIT_FAILURE;
+    }
+     
     input LastInput = {};
     input CurrInput = {};
 
     u32 Shader = CreateShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
-    renderer Renderer = CreateRenderer();
+    //texture *GrassTexture = CreateTexture("../../game/assets/grass_tile.png");
+
+    const char *textures[] = {
+        "../../game/assets/grass_tile.png",
+        "../../game/assets/hello_world.png"
+    };
+    LoadTexturesToAtlas(textures, ArrayCount(textures));
+    texture *GrassTexture = CreateTextureFromBuffer((unsigned char *)GlobalTextureAtlas.Data,
+                                                    GlobalTextureAtlas.Width,
+                                                    GlobalTextureAtlas.Height, 4);
+
+    UpdateInt(Shader, "texture1", 0);
+
+    lua_getglobal(GlobalLuaState, "gRenderer");
+    renderer *Renderer = (renderer *)lua_tointeger(GlobalLuaState, -1);
 
     BindShader(Shader);
-    glm::mat4 ProjectionMat = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, 0.0f, 100.0f);
+    glm::mat4 ProjectionMat = glm::ortho(-(f32)WindowWidth*0.5f, (f32)WindowWidth*0.5f, -(f32)WindowHeight*0.5f, (f32)WindowHeight*0.5f, 0.0f, 100.0f);
     UpdateMat4f(Shader, "uProj", ProjectionMat);
 
     glm::vec3 Position = glm::vec3(0, 0, 20);
@@ -253,32 +339,46 @@ int main()
         f64 Fps = (f64)Frequency.QuadPart / (f64)(CurrentCounter.QuadPart - LastCounter.QuadPart);
         f32 DeltaTime = (f32)((f64)(CurrentCounter.QuadPart - LastCounter.QuadPart) / (f64)Frequency.QuadPart);
 
-
         Win32ProcessMessages(&CurrInput, &LastInput);
  
-        glClearColor(1.0f, 0.5f, 0.5f, 1.0f);
+        glClearColor(0.3f, 0.5f, 0.9f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // TODO: Render
-        RenderBegin(&Renderer, Shader);
-        for(i32 X = 0; X < 100; ++X)
+        glActiveTexture(GL_TEXTURE0);
+        TextureBind(GrassTexture);
+
+        RenderBegin(Renderer, Shader);
+        lua_getglobal(GlobalLuaState, "update");
+        if(lua_isfunction(GlobalLuaState, -1))
         {
-            for(i32 Y = 0; Y < 100; ++Y)
-            {
-                float ColorR = (float)X / 100.0f;
-                float ColorG = (float)Y / 100.0f;
-                AddQuadToRenderQueue(&Renderer, (float)X*32.0f, (float)Y*32.0f, 32, 32, (f32)glm::radians(0.0f), ColorR, ColorG, 0, 1);
-            }
+            lua_pushnumber(GlobalLuaState, DeltaTime);
+            lua_pcall(GlobalLuaState, 1, 0, 0);
         }
-        RenderEnd(&Renderer);
-  
+        
+        f32 Uvs0[4] = {
+            16.0f / 1200.0f, 0.0f,
+            600.0f / 1200.0f, 600.0f/1200.0f
+        };
+        AddQuadToRenderQueue(Renderer, (-(f32)WindowWidth*0.5f) + 110, 0, 100, 100, 0, Uvs0);
+        f32 Uvs1[4] = {
+            0.0f, 0.0f,
+            16.0f / 1200.0f, 16.0f/1200.0f
+        };
+        AddQuadToRenderQueue(Renderer, (-(f32)WindowWidth*0.5f) + 110, 120, 100, 100, 0, Uvs1);
+        
+
+        RenderEnd(Renderer);
+
+        TextureUnbind();
         SwapBuffers(DeviceContext); 
         LastInput = CurrInput;
         LastCounter = CurrentCounter;
-        
-
-        printf("fps:%d\n", (int)Fps);
     }
-    ShutdownRenderer(&Renderer);
+    
+    ShutdownRenderer(Renderer);
+    DestroyTexture(GrassTexture);
+    lua_close(GlobalLuaState);
+    
     return 0;
 }
