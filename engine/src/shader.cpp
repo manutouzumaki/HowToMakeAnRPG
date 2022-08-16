@@ -1,6 +1,6 @@
-
-u32 CreateShader(const char *VertexFilepath, const char *FragmentFilepath)
+shader *ShaderCreate(const char *VertexFilepath, const char *FragmentFilepath)
 {
+    shader *Shader = (shader *)malloc(sizeof(shader));
     read_file_result VertexResult = Win32ReadEntireFile(VertexFilepath);
     read_file_result FragmentResult = Win32ReadEntireFile(FragmentFilepath);
 
@@ -38,15 +38,15 @@ u32 CreateShader(const char *VertexFilepath, const char *FragmentFilepath)
         OutputDebugString("\n");
     }
 
-    u32 Program = glCreateProgram();
-    glAttachShader(Program, VertexID);
-    glAttachShader(Program, FragmentID);
-    glLinkProgram(Program);
-    glGetProgramiv(Program, GL_LINK_STATUS, &Succes);
+    Shader->ID = glCreateProgram();
+    glAttachShader(Shader->ID, VertexID);
+    glAttachShader(Shader->ID, FragmentID);
+    glLinkProgram(Shader->ID);
+    glGetProgramiv(Shader->ID, GL_LINK_STATUS, &Succes);
     if(!Succes)
     {
         OutputDebugString("Error Linking Shader Program\n"); 
-        glGetProgramInfoLog(Program, 512, 0, InfoLog);
+        glGetProgramInfoLog(Shader->ID, 512, 0, InfoLog);
         OutputDebugString(InfoLog);
         OutputDebugString("\n");
     }
@@ -57,44 +57,51 @@ u32 CreateShader(const char *VertexFilepath, const char *FragmentFilepath)
     free(VertexResult.data);
     free(FragmentResult.data);
 
-    return Program;
+    return Shader;
 }
 
-internal void BindShader(u32 Shader)
+internal void ShaderDestroy(shader *Shader)
 {
-    glUseProgram(Shader);
+    glDeleteProgram(Shader->ID);
+    free(Shader);
 }
 
-internal void UnbindShader()
+internal void ShaderBind(shader *Shader)
+{
+    glUseProgram(Shader->ID);
+}
+
+internal void ShaderUnbind()
 {
     glUseProgram(0);
 }
 
-internal void UpdateVec3f(u32 Shader, const char *VarName, glm::vec3 Vector)
+
+internal void UpdateVec3f(shader *Shader, const char *VarName, glm::vec3 Vector)
 {
-    i32 VarLoc = glGetUniformLocation(Shader, VarName);
-    BindShader(Shader);
+    i32 VarLoc = glGetUniformLocation(Shader->ID, VarName);
+    ShaderBind(Shader);
     glUniform3fv(VarLoc, 1, &Vector[0]); 
 }
 
-internal void UpdateMat4f(u32 Shader, const char *VarName, glm::mat4 Matrix)
+internal void UpdateMat4f(shader *Shader, const char *VarName, glm::mat4 Matrix)
 {
-    i32 VarLoc = glGetUniformLocation(Shader, VarName);
-    BindShader(Shader);
+    i32 VarLoc = glGetUniformLocation(Shader->ID, VarName);
+    ShaderBind(Shader);
     glUniformMatrix4fv(VarLoc, 1, false, &Matrix[0][0]);
 }
 
-internal void UpdateInt(u32 Shader, const char *VarName, u32 Value)
+internal void UpdateInt(shader *Shader, const char *VarName, u32 Value)
 { 
-    i32 VarLoc = glGetUniformLocation(Shader, VarName);
-    BindShader(Shader);
+    i32 VarLoc = glGetUniformLocation(Shader->ID, VarName);
+    ShaderBind(Shader);
     glUniform1i(VarLoc, Value);
 }
 
-internal void UpdateIntArray(u32 Shader, const char *VarName, i32 Size, i32 *Array)
+internal void UpdateIntArray(shader *Shader, const char *VarName, i32 Size, i32 *Array)
 {
-    i32 VarLoc = glGetUniformLocation(Shader, VarName);
-    BindShader(Shader);
+    i32 VarLoc = glGetUniformLocation(Shader->ID, VarName);
+    ShaderBind(Shader);
     glUniform1iv(VarLoc, Size, Array);
 }
 

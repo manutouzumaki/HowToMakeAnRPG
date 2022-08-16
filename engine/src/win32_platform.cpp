@@ -301,7 +301,7 @@ int main()
     input LastInput = {};
     input CurrInput = {};
 
-    u32 Shader = CreateShader("../shaders/vertex.glsl", "../shaders/fragment.glsl");
+    shader *Shader = ShaderCreate("../shaders/vertex.glsl", "../shaders/fragment.glsl");
     //texture *GrassTexture = CreateTexture("../../game/assets/grass_tile.png");
 
     const char *textures[] = {
@@ -318,8 +318,9 @@ int main()
     lua_getglobal(GlobalLuaState, "gRenderer");
     renderer *Renderer = (renderer *)lua_tointeger(GlobalLuaState, -1);
 
-    BindShader(Shader);
+    ShaderBind(Shader);
     glm::mat4 ProjectionMat = glm::ortho(-(f32)WindowWidth*0.5f, (f32)WindowWidth*0.5f, -(f32)WindowHeight*0.5f, (f32)WindowHeight*0.5f, 0.0f, 100.0f);
+
     UpdateMat4f(Shader, "uProj", ProjectionMat);
 
     glm::vec3 Position = glm::vec3(0, 0, 20);
@@ -371,14 +372,14 @@ int main()
         RenderEnd(Renderer);
 
         TextureUnbind();
+
         SwapBuffers(DeviceContext); 
         LastInput = CurrInput;
         LastCounter = CurrentCounter;
     }
     
-    ShutdownRenderer(Renderer);
+    RendererDestroy(Renderer);
     DestroyTexture(GrassTexture);
     lua_close(GlobalLuaState);
-    
     return 0;
 }

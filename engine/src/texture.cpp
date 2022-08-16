@@ -48,9 +48,6 @@ void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
             OffsetY += AtlasHeight/2;
         }
     }
-
-
-
     free(Textures);
 }
 
@@ -109,8 +106,8 @@ texture *CreateTextureFromBuffer(unsigned char *Buffer, i32 Width, i32 Height, i
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, format, Texture->Width, Texture->Height, 0, format, GL_UNSIGNED_BYTE, Buffer);
 
+    glTexImage2D(GL_TEXTURE_2D, 0, format, Texture->Width, Texture->Height, 0, format, GL_UNSIGNED_BYTE, Buffer);
     return Texture;    
 }
 
@@ -129,3 +126,4 @@ void TextureBind(texture *Texture) {
 void TextureUnbind() {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
+

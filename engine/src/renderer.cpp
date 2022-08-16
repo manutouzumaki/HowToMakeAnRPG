@@ -1,7 +1,9 @@
+global_variable i32 TextureSlots[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+
 internal void LoadElementIndices(u32 *Indices, i32 Index)
 {
-    int OffsetArrayIndex = 6 * Index;
-    int Offset = 4 * Index; 
+    i32 OffsetArrayIndex = 6 * Index;
+    i32 Offset = 4 * Index; 
     Indices[OffsetArrayIndex] = Offset + 3;
     Indices[OffsetArrayIndex + 1] = Offset + 2;
     Indices[OffsetArrayIndex + 2] = Offset;
@@ -26,7 +28,7 @@ internal i32 CreateRenderer(lua_State *LuaState)
     glGenVertexArrays(1, &Renderer->VAO);
     glBindVertexArray(Renderer->VAO);
 
-    Renderer->Vertices = (float *)malloc(BATCH_SIZE * (VERTEX_SIZE_BYTES * 4));
+    Renderer->Vertices = (f32 *)malloc(BATCH_SIZE * (VERTEX_SIZE_BYTES * 4));
 
     glGenBuffers(1, &Renderer->VBO);
     glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
@@ -50,54 +52,48 @@ internal i32 CreateRenderer(lua_State *LuaState)
 
     free(Indices);
     
-    u64 addres = (u64)Renderer;
-    lua_pushinteger(LuaState, addres);
+    u64 Addres = (u64)Renderer;
+    lua_pushinteger(LuaState, Addres);
     
-    return 1;
-    
+    return 1;    
 }
 
-internal void ShutdownRenderer(renderer *Renderer)
+internal void RendererDestroy(renderer *Renderer)
 {
     glDeleteVertexArrays(1, &Renderer->VAO);
     glDeleteBuffers(1, &Renderer->VBO);
     glDeleteBuffers(1, &Renderer->EBO);
     free(Renderer->Vertices);
-    free(Renderer);
 }
 
 internal void FlushRenderQueue(renderer *Renderer)
 {
+    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, (Renderer->QuadCount * 4) * VERTEX_SIZE_BYTES, Renderer->Vertices); 
     glDrawElements(GL_TRIANGLES, Renderer->QuadCount * 6, GL_UNSIGNED_INT, 0);
     Renderer->QuadCount = 0;
 }
 
-internal void RenderBegin(renderer *Renderer, u32 Shader)
+internal void RenderBegin(renderer *Renderer, shader *Shader)
 {
-    BindShader(Shader);
+    ShaderBind(Shader);
     glBindVertexArray(Renderer->VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
 }
 
 internal void RenderEnd(renderer *Renderer)
 {
+    glBindVertexArray(Renderer->VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
     FlushRenderQueue(Renderer);
 }
 
 internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 *Uvs)
 {
-    glm::mat4 TranslationMat = glm::translate(glm::mat4(1.0f), glm::vec3(XPos, YPos, 0.0f));
-    glm::mat4 RotationMat = glm::rotate(glm::mat4(1.0f), Angle, glm::vec3(0, 0, 1));
-    glm::mat4 ScaleMat = glm::scale(glm::mat4(1.0f), glm::vec3(Width, Height, 1.0f));
-    glm::mat4 ModelMat = TranslationMat * RotationMat * ScaleMat;
-
     if(Renderer->QuadCount >= BATCH_SIZE)
     {
         FlushRenderQueue(Renderer);
     }
     f32 *Vertices = Renderer->Vertices + (Renderer->QuadCount * VERTEX_SIZE * 4);
-
     f32 UvsArray[8] = {
         Uvs[2], Uvs[3],
         Uvs[2], Uvs[1],
@@ -105,7 +101,6 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         Uvs[0], Uvs[3]
     };
     f32 *UvsPtr = UvsArray;
-
     f32 X = 0.5f;
     f32 Y = 0.5f; 
     for(i32 Index = 0; Index < 4; ++Index)
@@ -117,12 +112,12 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         else if(Index == 3)
             Y = 0.5f;
         glm::vec2 CurrentP = glm::vec2(X, Y);
-        CurrentP.x *= Width;
-        CurrentP.y *= Height;
         if(Angle > 0.0f)
         {
             CurrentP = glm::rotate(CurrentP, Angle);
         }
+        CurrentP.x *= Width;
+        CurrentP.y *= Height;
         CurrentP.x += XPos;
         CurrentP.y += YPos;
         *Vertices++ = CurrentP.x;
@@ -158,7 +153,6 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
         glm::vec2 CurrentP = glm::vec2(X, Y);
         if(Angle > 0.0f)
         {
-            // TODO: add a faster rotate function
             CurrentP = glm::rotate(CurrentP, Angle);
         }
         CurrentP.x *= Width;
