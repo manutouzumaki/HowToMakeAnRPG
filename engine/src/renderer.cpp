@@ -1,5 +1,3 @@
-global_variable i32 TextureSlots[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-
 internal void LoadElementIndices(u32 *Indices, i32 Index)
 {
     i32 OffsetArrayIndex = 6 * Index;

@@ -78,6 +78,7 @@ internal void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
             OffsetX = 0;
             OffsetY += AtlasHeight/2;
         }
+        stbi_image_free(Textures[i].Data);
     }
     free(Textures);
 }
