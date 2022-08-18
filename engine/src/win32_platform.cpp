@@ -182,6 +182,9 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext, i32 width, i32 hei
             OutputDebugString("Error: glad failed Initialize\n");
         }
     }
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0, 0, width, height);
 }
 
@@ -220,81 +223,6 @@ i32 StringLength(const char *String)
         ++Count;
     }
     return Count;
-}
-
-internal i32 DrawBox2d(lua_State *LuaState)
-{
-    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -6);
-    i32 X = (i32)lua_tonumber(LuaState, -5);
-    i32 Y = (i32)lua_tonumber(LuaState, -4);
-    i32 W = (i32)lua_tonumber(LuaState, -3);
-    i32 H = (i32)lua_tonumber(LuaState, -2);
-    lua_getfield(LuaState, -1, "r");
-    f32 R = (f32)lua_tonumber(LuaState, -1);
-    lua_getfield(LuaState, -2, "g");
-    f32 G = (f32)lua_tonumber(LuaState, -1);
-    lua_getfield(LuaState, -3, "b");
-    f32 B = (f32)lua_tonumber(LuaState, -1);
-    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), R, G, B, 1);
-    return 0;
-}
-
-internal i32 DrawTexture(lua_State *LuaState)
-{
-    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -6);
-    i32 X = (i32)lua_tonumber(LuaState, -5);
-    i32 Y = (i32)lua_tonumber(LuaState, -4);
-    i32 W = (i32)lua_tonumber(LuaState, -3);
-    i32 H = (i32)lua_tonumber(LuaState, -2);
-    const char *Name = (const char *)lua_tostring(LuaState, -1);
-    texture_info TextureInfo = GlobalTextureAtlas.Info[Name]; 
-    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), &TextureInfo.Uvs[0]);
-    return 0;
-}
-
-internal i32 DrawSprite(lua_State *LuaState)
-{
-    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -10);
-    i32 X = (i32)lua_tonumber(LuaState, -9);
-    i32 Y = (i32)lua_tonumber(LuaState, -8);
-    i32 W = (i32)lua_tonumber(LuaState, -7);
-    i32 H = (i32)lua_tonumber(LuaState, -6);
-    const char *Name = (const char *)lua_tostring(LuaState, -5);
-    f32 RelU0 = (f32)lua_tonumber(LuaState, -4); 
-    f32 RelV0 = (f32)lua_tonumber(LuaState, -3); 
-    f32 RelU1 = (f32)lua_tonumber(LuaState, -2); 
-    f32 RelV1 = (f32)lua_tonumber(LuaState, -1); 
-    texture_info TextureInfo = GlobalTextureAtlas.Info[Name];
-    
-    f32 AbsU0 = TextureInfo.Uvs[0];
-    f32 AbsV0 = TextureInfo.Uvs[1];
-    f32 AbsU1 = TextureInfo.Uvs[2];
-    f32 AbsV1 = TextureInfo.Uvs[3];
-
-    f32 ULength = AbsU1 - AbsU0;
-    f32 VLength = AbsV1 - AbsV0;
-
-    f32 U0Offset = ULength * RelU0;
-    f32 V0Offset = VLength * RelV0;
-    f32 U1Offset = ULength * RelU1;
-    f32 V1Offset = VLength * RelV1;
-
-    f32 Uvs[4] = {
-        AbsU0 + U0Offset, AbsV0 + V0Offset, 
-        AbsU0 + U1Offset, AbsV0 + V1Offset 
-    };
-
-    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), Uvs);
-    return 0;
-}
-
-internal i32 GetTextureInfo(lua_State *LuaState)
-{
-    const char *Name = (const char *)lua_tostring(LuaState, -1);
-    texture_info Info = GlobalTextureAtlas.Info[Name];
-    lua_pushinteger(LuaState, Info.Width);
-    lua_pushinteger(LuaState, Info.Height);
-    return 2;
 }
 
 internal i32 GetDisplayInfo(lua_State *LuaState)
@@ -349,6 +277,58 @@ internal i32 Include(lua_State *LuaState)
     return 0;
 }
 
+void LoadEngineFunctionToLua()
+{
+    lua_pushcfunction(GlobalLuaState, RendererCreate);
+    lua_setglobal(GlobalLuaState, "RendererCreate");
+    lua_pushcfunction(GlobalLuaState, DrawBox2d);
+    lua_setglobal(GlobalLuaState, "DrawBox2d");
+    lua_pushcfunction(GlobalLuaState, DrawTexture);
+    lua_setglobal(GlobalLuaState, "DrawTexture");
+    lua_pushcfunction(GlobalLuaState, DrawSprite);
+    lua_setglobal(GlobalLuaState, "DrawSprite");
+    lua_pushcfunction(GlobalLuaState, GetTextureInfo);
+    lua_setglobal(GlobalLuaState, "GetTextureInfo");
+    lua_pushcfunction(GlobalLuaState, GetDisplayInfo);
+    lua_setglobal(GlobalLuaState, "GetDisplayInfo");
+    lua_pushcfunction(GlobalLuaState, SetStringArray);
+    lua_setglobal(GlobalLuaState, "SetStringArray");
+    lua_pushcfunction(GlobalLuaState, Include);
+    lua_setglobal(GlobalLuaState, "Include");
+    lua_pushcfunction(GlobalLuaState, RendererTranslate);
+    lua_setglobal(GlobalLuaState, "RendererTranslate");
+    lua_pushcfunction(GlobalLuaState, GetKeyDown);
+    lua_setglobal(GlobalLuaState, "GetKeyDown");
+    lua_pushcfunction(GlobalLuaState, GetKeyJustDown);
+    lua_setglobal(GlobalLuaState, "GetKeyJustDown");
+    lua_pushcfunction(GlobalLuaState, GetKeyUp);
+    lua_setglobal(GlobalLuaState, "GetKeyUp");
+    lua_pushcfunction(GlobalLuaState, GetKeyJustUp);
+    lua_setglobal(GlobalLuaState, "GetKeyJustUp");
+    lua_pushcfunction(GlobalLuaState, GetJoystickButtonDown);
+    lua_setglobal(GlobalLuaState, "GetJoystickButtonDown");
+    lua_pushcfunction(GlobalLuaState, GetJoystickButtonJustDown);
+    lua_setglobal(GlobalLuaState, "GetJoystickButtonJustDown");
+    lua_pushcfunction(GlobalLuaState, GetJoystickButtonUp);
+    lua_setglobal(GlobalLuaState, "GetJoystickButtonUp");
+    lua_pushcfunction(GlobalLuaState, GetJoystickButtonJustUp);
+    lua_setglobal(GlobalLuaState, "GetJoystickButtonJustUp");
+    lua_pushcfunction(GlobalLuaState, GetMouseButtonDown);
+    lua_setglobal(GlobalLuaState, "GetMouseButtonDown");
+    lua_pushcfunction(GlobalLuaState, GetMouseButtonJustDown);
+    lua_setglobal(GlobalLuaState, "GetMouseButtonJustDown");
+    lua_pushcfunction(GlobalLuaState, GetMouseButtonUp);
+    lua_setglobal(GlobalLuaState, "GetMouseButtonUp");
+    lua_pushcfunction(GlobalLuaState, GetMouseButtonJustUp);
+    lua_setglobal(GlobalLuaState, "GetMouseButtonJustUp");
+    lua_pushcfunction(GlobalLuaState, GetMouseInfo);
+    lua_setglobal(GlobalLuaState, "GetMouseInfo");
+    lua_pushcfunction(GlobalLuaState, GetJoystickLeftStickInfo);
+    lua_setglobal(GlobalLuaState, "GetJoystickLeftStickInfo");
+    lua_pushcfunction(GlobalLuaState, GetJoystickRightStickInfo);
+    lua_setglobal(GlobalLuaState, "GetJoystickRightStickInfo");
+}
+
 /* THE ENTRY POINT OF THE ENGINE */
 int main()
 {
@@ -357,31 +337,7 @@ int main()
     // TODO: load C-API test...
     GlobalLuaState = luaL_newstate();
     luaL_openlibs(GlobalLuaState);
-
-    lua_pushcfunction(GlobalLuaState, RendererCreate);
-    lua_setglobal(GlobalLuaState, "RendererCreate");
-
-    lua_pushcfunction(GlobalLuaState, DrawBox2d);
-    lua_setglobal(GlobalLuaState, "DrawBox2d");
-
-    lua_pushcfunction(GlobalLuaState, DrawTexture);
-    lua_setglobal(GlobalLuaState, "DrawTexture");
-
-    lua_pushcfunction(GlobalLuaState, DrawSprite);
-    lua_setglobal(GlobalLuaState, "DrawSprite");
-   
-    lua_pushcfunction(GlobalLuaState, GetTextureInfo);
-    lua_setglobal(GlobalLuaState, "GetTextureInfo");
-
-    lua_pushcfunction(GlobalLuaState, GetDisplayInfo);
-    lua_setglobal(GlobalLuaState, "GetDisplayInfo");
-
-    lua_pushcfunction(GlobalLuaState, SetStringArray);
-    lua_setglobal(GlobalLuaState, "SetStringArray");
-
-    lua_pushcfunction(GlobalLuaState, Include);
-    lua_setglobal(GlobalLuaState, "Include");
-
+    LoadEngineFunctionToLua();
 
     if(luaL_dofile(GlobalLuaState, "../../game/settings.lua") != LUA_OK) 
     {
@@ -405,6 +361,11 @@ int main()
     
     LARGE_INTEGER Frequency = {};
     QueryPerformanceFrequency(&Frequency); 
+
+    input LastInput = {};
+    input CurrInput = {};
+    GlobalInputPtr = &CurrInput;
+
     // TODO: Initialize
      
     // load assets
@@ -425,9 +386,6 @@ int main()
         return EXIT_FAILURE;
     }
      
-    input LastInput = {};
-    input CurrInput = {};
-
     lua_getglobal(GlobalLuaState, "gRenderer");
     renderer *Renderer = (renderer *)lua_tointeger(GlobalLuaState, -1);
 
@@ -437,18 +395,17 @@ int main()
     glm::mat4 ProjectionMat = glm::ortho(-(f32)WindowWidth*0.5f, (f32)WindowWidth*0.5f, -(f32)WindowHeight*0.5f, (f32)WindowHeight*0.5f, 0.0f, 100.0f);
     UpdateMat4f(Shader, "uProj", ProjectionMat);
 
-    glm::vec3 Position = glm::vec3(0, 0, 20);
-    glm::vec3 Front = glm::vec3(Position.x, Position.y, -1);
-    glm::vec3 Up = glm::vec3(0, 1, 0);
-    glm::mat4 ViewMat = glm::lookAt(Position, Front, Up);
-    UpdateMat4f(Shader, "uView", ViewMat);
-
     LARGE_INTEGER LastCounter = {};
     QueryPerformanceCounter(&LastCounter);
 
     GlobalRunning = true;
     while(GlobalRunning)
     {
+        glm::mat4 ViewMat = glm::lookAt(Renderer->Position,
+                                        Renderer->Front,
+                                        Renderer->Up);
+        UpdateMat4f(Shader, "uView", ViewMat);
+
         LARGE_INTEGER CurrentCounter = {};
         QueryPerformanceCounter(&CurrentCounter);
         f64 Fps = (f64)Frequency.QuadPart / (f64)(CurrentCounter.QuadPart - LastCounter.QuadPart);
@@ -478,6 +435,11 @@ int main()
         SwapBuffers(DeviceContext); 
         LastInput = CurrInput;
         LastCounter = CurrentCounter;
+
+        Renderer->LastDrawCallCount = Renderer->CurrentDrawCallCount;
+        Renderer->CurrentDrawCallCount = 0;
+
+        //printf("DrawCallsPerFrame: %d\n", Renderer->LastDrawCallCount);
     }
     
     RendererDestroy(Renderer);

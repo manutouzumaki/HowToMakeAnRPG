@@ -1,5 +1,14 @@
 global_variable texture_atlas GlobalTextureAtlas;
 
+internal i32 GetTextureInfo(lua_State *LuaState)
+{
+    const char *Name = (const char *)lua_tostring(LuaState, -1);
+    texture_info Info = GlobalTextureAtlas.Info[Name];
+    lua_pushinteger(LuaState, Info.Width);
+    lua_pushinteger(LuaState, Info.Height);
+    return 2;
+}
+
 internal const char *GetTextureNameFromPath(const char *Path)
 {
     char *Letter = (char *)Path;
@@ -23,18 +32,18 @@ internal const char *GetTextureNameFromPath(const char *Path)
 
 internal void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
 {
-    i32 AtlasWidth = 128;
-    i32 AtlasHeight = 128;
+    i32 AtlasWidth = 4096;
+    i32 AtlasHeight = 4096;
+    i32 BiggerTextureWidth = 0;
+    i32 BiggerTextureHeight = 0;
     raw_texture *Textures = (raw_texture *)malloc(sizeof(raw_texture) * TextureCount);
     for(i32 i = 0; i < TextureCount; ++i)
     {
         Textures[i].Data = stbi_load(Path[i], &Textures[i].Width, &Textures[i].Height, &Textures[i].Channels, 0);
-        AtlasWidth = Textures[i].Width > AtlasWidth ? Textures[i].Width : AtlasWidth;
-        AtlasHeight = Textures[i].Height > AtlasHeight ? Textures[i].Height : AtlasHeight;
         Textures[i].Name = GetTextureNameFromPath(Path[i]); 
+        BiggerTextureWidth = Textures[i].Width > BiggerTextureWidth ? Textures[i].Width : BiggerTextureWidth;
+        BiggerTextureHeight = Textures[i].Height > BiggerTextureHeight ? Textures[i].Height : BiggerTextureHeight;
     }
-    AtlasWidth *= 2;
-    AtlasHeight *= 2;
 
     GlobalTextureAtlas.Data = (u32 *)malloc(AtlasWidth * AtlasHeight * sizeof(u32));
     memset(GlobalTextureAtlas.Data, 0, AtlasWidth * AtlasHeight * sizeof(u32));
@@ -46,18 +55,46 @@ internal void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
     i32 OffsetY = 0;
     for(i32 i = 0; i < TextureCount; ++i)
     {
-        u8 *RowSrc = Textures[i].Data;
-        for(i32 y = 0; y < Textures[i].Height; ++y)
+        if(i == 3) {  
+            i32 StopHere = 0;
+            (void)StopHere;
+        }
+
+        if(Textures[i].Channels == 3)
         {
-            for(i32 x = 0; x < Textures[i].Width; ++x)
+            u8 *RowSrc = Textures[i].Data;
+            for(i32 y = 0; y < Textures[i].Height; ++y)
             {
-                u8 R = *RowSrc++;
-                u8 G = *RowSrc++;
-                u8 B = *RowSrc++; 
-                u8 A = 0xFF;
-                u32 *Dest = GlobalTextureAtlas.Data + (OffsetY * AtlasWidth) + OffsetX;
-                Dest[y * AtlasWidth + x] = A << 24 | B << 16 | G << 8 | R;
+                for(i32 x = 0; x < Textures[i].Width; ++x)
+                {
+                    u8 R = *RowSrc++;
+                    u8 G = *RowSrc++;
+                    u8 B = *RowSrc++; 
+                    u8 A = 0xFF;
+                    u32 *Dest = GlobalTextureAtlas.Data + (OffsetY * AtlasWidth) + OffsetX;
+                    Dest[y * AtlasWidth + x] = A << 24 | B << 16 | G << 8 | R;
+                }
             }
+        }
+        else if(Textures[i].Channels == 4)
+        {
+            u8 *RowSrc = Textures[i].Data;
+            for(i32 y = 0; y < Textures[i].Height; ++y)
+            {
+                for(i32 x = 0; x < Textures[i].Width; ++x)
+                {
+                    u8 R = *RowSrc++;
+                    u8 G = *RowSrc++;
+                    u8 B = *RowSrc++; 
+                    u8 A = *RowSrc++;
+                    u32 *Dest = GlobalTextureAtlas.Data + (OffsetY * AtlasWidth) + OffsetX;
+                    Dest[y * AtlasWidth + x] = A << 24 | B << 16 | G << 8 | R;
+                }
+            }
+        }
+        else
+        {
+            Assert(!"Error: Texture NOT Supported");
         }
         // TODO: save the uvs to select the texture
         texture_info Info;
@@ -76,7 +113,7 @@ internal void LoadTexturesToAtlas(const char **Path, i32 TextureCount)
         else
         {
             OffsetX = 0;
-            OffsetY += AtlasHeight/2;
+            OffsetY += BiggerTextureHeight;
         }
         stbi_image_free(Textures[i].Data);
     }

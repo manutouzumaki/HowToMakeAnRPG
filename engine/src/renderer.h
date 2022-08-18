@@ -23,6 +23,12 @@ struct renderer
     u32 EBO;
     float *Vertices;
     i32 QuadCount;
+    i32 CurrentDrawCallCount;
+    i32 LastDrawCallCount;
+
+    glm::vec3 Position;
+    glm::vec3 Front;
+    glm::vec3 Up; 
 };
 
 #endif

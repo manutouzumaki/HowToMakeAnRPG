@@ -1,3 +1,5 @@
+global_variable input *GlobalInputPtr;
+
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 global_variable u16 XInputButtons[] = 
@@ -74,3 +76,168 @@ internal read_file_result Win32ReadEntireFile(const char *Filepath)
     return Result;
 }
 
+internal i32 GetKeyDown(lua_State *LuaState)
+{
+    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
+    unsigned int ASCII = (unsigned int)*KeyCode;
+    input *Input = GlobalInputPtr;
+    lua_pushboolean(LuaState, Input->Keys[ASCII].IsDown);
+    return 1;
+}
+
+internal i32 GetKeyJustDown(lua_State *LuaState)
+{
+    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
+    unsigned int ASCII = (unsigned int)*KeyCode;
+    input *Input = GlobalInputPtr;
+    if(Input->Keys[ASCII].IsDown != Input->Keys[ASCII].WasDown)
+    {
+        lua_pushboolean(LuaState, Input->Keys[ASCII].IsDown);
+    } 
+    else
+    { 
+        lua_pushboolean(LuaState, false);
+    }
+    return 1;
+}
+
+internal i32 GetKeyUp(lua_State *LuaState)
+{
+    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
+    unsigned int ASCII = (unsigned int)*KeyCode;
+    input *Input = GlobalInputPtr;
+    lua_pushboolean(LuaState, !Input->Keys[ASCII].IsDown);
+    return 1;
+}
+
+internal i32 GetKeyJustUp(lua_State *LuaState)
+{
+    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
+    unsigned int ASCII = (unsigned int)*KeyCode;
+    input *Input = GlobalInputPtr;
+    if(Input->Keys[ASCII].IsDown != Input->Keys[ASCII].WasDown)
+    {
+        lua_pushboolean(LuaState, Input->Keys[ASCII].WasDown);
+    } 
+    else
+    { 
+        lua_pushboolean(LuaState, false);
+    }
+    return 1;
+}
+
+internal i32 GetJoystickButtonDown(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    lua_pushboolean(LuaState, Input->Buttons[Button].IsDown);
+    return 1;
+}
+
+internal i32 GetJoystickButtonJustDown(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    if(Input->Buttons[Button].IsDown != Input->Buttons[Button].WasDown)
+    {
+        lua_pushboolean(LuaState, Input->Buttons[Button].IsDown);
+    } 
+    else
+    { 
+        lua_pushboolean(LuaState, false);
+    }
+    return 1;
+}
+
+internal i32 GetJoystickButtonUp(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    lua_pushboolean(LuaState, !Input->Buttons[Button].IsDown);
+    return 1;
+}
+
+internal i32 GetJoystickButtonJustUp(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    if(Input->Buttons[Button].IsDown != Input->Buttons[Button].WasDown)
+    {
+        lua_pushboolean(LuaState, Input->Buttons[Button].WasDown);
+    } 
+    else
+    { 
+        lua_pushboolean(LuaState, false);
+    }
+    return 1;
+}
+
+internal i32 GetMouseButtonDown(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    lua_pushboolean(LuaState, Input->MouseButtons[Button].IsDown);
+    return 1;
+}
+
+internal i32 GetMouseButtonJustDown(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    if(Input->MouseButtons[Button].IsDown != Input->MouseButtons[Button].WasDown)
+    {
+        lua_pushboolean(LuaState, Input->MouseButtons[Button].IsDown);
+    } 
+    else
+    { 
+        lua_pushboolean(LuaState, false);
+    }
+    return 1;
+}
+
+internal i32 GetMouseButtonUp(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    lua_pushboolean(LuaState, !Input->MouseButtons[Button].IsDown);
+    return 1;
+}
+
+internal i32 GetMouseButtonJustUp(lua_State *LuaState)
+{
+    unsigned int Button = (unsigned int)lua_tointeger(LuaState, -1);
+    input *Input = GlobalInputPtr;
+    if(Input->MouseButtons[Button].IsDown != Input->MouseButtons[Button].WasDown)
+    {
+        lua_pushboolean(LuaState, Input->MouseButtons[Button].WasDown);
+    } 
+    else
+    { 
+        lua_pushboolean(LuaState, false);
+    }
+    return 1;
+}
+
+internal i32 GetMouseInfo(lua_State *LuaState)
+{
+    input *Input = GlobalInputPtr;
+    lua_pushinteger(LuaState, Input->MouseX);
+    lua_pushinteger(LuaState, Input->MouseY);
+    return 2;
+}
+
+internal i32 GetJoystickLeftStickInfo(lua_State *LuaState)
+{
+    input *Input = GlobalInputPtr;
+    lua_pushnumber(LuaState, Input->LeftStickX);
+    lua_pushnumber(LuaState, Input->LeftStickY);
+    return 2;
+}
+
+internal i32 GetJoystickRightStickInfo(lua_State *LuaState)
+{
+    input *Input = GlobalInputPtr;
+    lua_pushnumber(LuaState, Input->RightStickX);
+    lua_pushnumber(LuaState, Input->RightStickY);
+    return 2;
+}

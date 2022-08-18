@@ -1,4 +1,4 @@
 -- settings
-name = "Hello World"
-width = 740
-height = 480
+name = "Drawing a tile"
+width = 256
+height = 224
