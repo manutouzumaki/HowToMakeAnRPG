@@ -77,6 +77,7 @@ function Map:Render(renderer)
                        self.mX + i * self.mTileWidth,
                        self.mY - j * self.mTileHeight,
                        self.mTileWidth, self.mTileHeight,
+                       0.0, 1.0,
                        self.mTextureAtlas,
                        table.unpack(uvs))
 

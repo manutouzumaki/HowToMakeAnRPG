@@ -42,6 +42,7 @@ function Entity:Draw(renderer)
     DrawSprite(renderer,
                self.mPixelX, self.mPixelY,
                self.mWidth, self.mHeight,
+               0.0,  1.0,
                self.mTexture,
                table.unpack(self.mUVs[self.mFrame]))
 end

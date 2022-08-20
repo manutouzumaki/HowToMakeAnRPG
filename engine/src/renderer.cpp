@@ -106,7 +106,7 @@ internal void RenderEnd(renderer *Renderer)
     FlushRenderQueue(Renderer);
 }
 
-internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 *Uvs)
+internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 Width, f32 Height, f32 Angle, f32 *Uvs, f32 Alpha)
 {
     if(Renderer->QuadCount >= BATCH_SIZE)
     {
@@ -130,21 +130,13 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
             X = -0.5f;
         else if(Index == 3)
             Y = 0.5f;
-        glm::vec2 CurrentP = glm::vec2(X, Y);
-        if(Angle > 0.0f)
-        {
-            CurrentP = glm::rotate(CurrentP, Angle);
-        }
-        CurrentP.x *= Width;
-        CurrentP.y *= Height;
-        CurrentP.x += XPos;
-        CurrentP.y += YPos;
-        *Vertices++ = CurrentP.x;
-        *Vertices++ = CurrentP.y;
+
+        *Vertices++ = (cosf(Angle)*(X * Width) - sinf(Angle)*(Y * Height)) + XPos;
+        *Vertices++ = (sinf(Angle)*(X * Width) + cosf(Angle)*(Y * Height)) + YPos;
         *Vertices++ = 1.0f;
         *Vertices++ = 1.0f;
         *Vertices++ = 1.0f;
-        *Vertices++ = 1.0f;
+        *Vertices++ = Alpha;
         *Vertices++ = *UvsPtr++;
         *Vertices++ = *UvsPtr++;
         *Vertices++ = 1.0f;
@@ -169,17 +161,9 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
             X = -0.5f;
         else if(Index == 3)
             Y = 0.5f;
-        glm::vec2 CurrentP = glm::vec2(X, Y);
-        if(Angle > 0.0f)
-        {
-            CurrentP = glm::rotate(CurrentP, Angle);
-        }
-        CurrentP.x *= Width;
-        CurrentP.y *= Height;
-        CurrentP.x += XPos;
-        CurrentP.y += YPos;
-        *Vertices++ = CurrentP.x;
-        *Vertices++ = CurrentP.y;
+
+        *Vertices++ = (cosf(Angle)*(X * Width) - sinf(Angle)*(Y * Height)) + XPos;
+        *Vertices++ = (sinf(Angle)*(X * Width) + cosf(Angle)*(Y * Height)) + YPos;
         *Vertices++ = R;
         *Vertices++ = G;
         *Vertices++ = B;
@@ -193,41 +177,48 @@ internal void AddQuadToRenderQueue(renderer *Renderer, f32 XPos, f32 YPos, f32 W
 
 internal i32 DrawBox2d(lua_State *LuaState)
 {
-    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -6);
-    i32 X = (i32)lua_tonumber(LuaState, -5);
-    i32 Y = (i32)lua_tonumber(LuaState, -4);
-    i32 W = (i32)lua_tonumber(LuaState, -3);
-    i32 H = (i32)lua_tonumber(LuaState, -2);
+    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -7);
+    i32 X = (i32)lua_tonumber(LuaState, -6);
+    i32 Y = (i32)lua_tonumber(LuaState, -5);
+    i32 W = (i32)lua_tonumber(LuaState, -4);
+    i32 H = (i32)lua_tonumber(LuaState, -3);
+    f32 Rot = (f32)lua_tonumber(LuaState, -2);
     lua_getfield(LuaState, -1, "r");
     f32 R = (f32)lua_tonumber(LuaState, -1);
     lua_getfield(LuaState, -2, "g");
     f32 G = (f32)lua_tonumber(LuaState, -1);
     lua_getfield(LuaState, -3, "b");
     f32 B = (f32)lua_tonumber(LuaState, -1);
-    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), R, G, B, 1);
+    lua_getfield(LuaState, -4, "a");
+    f32 A = (f32)lua_tonumber(LuaState, -1);
+    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(Rot), R, G, B, A);
     return 0;
 }
 
 internal i32 DrawTexture(lua_State *LuaState)
 {
-    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -6);
-    i32 X = (i32)lua_tonumber(LuaState, -5);
-    i32 Y = (i32)lua_tonumber(LuaState, -4);
-    i32 W = (i32)lua_tonumber(LuaState, -3);
-    i32 H = (i32)lua_tonumber(LuaState, -2);
+    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -8);
+    i32 X = (i32)lua_tonumber(LuaState, -7);
+    i32 Y = (i32)lua_tonumber(LuaState, -6);
+    i32 W = (i32)lua_tonumber(LuaState, -5);
+    i32 H = (i32)lua_tonumber(LuaState, -4);
+    f32 R = (f32)lua_tonumber(LuaState, -3);
+    f32 A = (f32)lua_tonumber(LuaState, -2);
     const char *Name = (const char *)lua_tostring(LuaState, -1);
     texture_info TextureInfo = GlobalTextureAtlas.Info[Name]; 
-    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), &TextureInfo.Uvs[0]);
+    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(R), &TextureInfo.Uvs[0], A);
     return 0;
 }
 
 internal i32 DrawSprite(lua_State *LuaState)
 {
-    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -10);
-    i32 X = (i32)lua_tonumber(LuaState, -9);
-    i32 Y = (i32)lua_tonumber(LuaState, -8);
-    i32 W = (i32)lua_tonumber(LuaState, -7);
-    i32 H = (i32)lua_tonumber(LuaState, -6);
+    renderer *Renderer = (renderer *)lua_tointeger(LuaState, -12);
+    i32 X = (i32)lua_tonumber(LuaState, -11);
+    i32 Y = (i32)lua_tonumber(LuaState, -10);
+    i32 W = (i32)lua_tonumber(LuaState, -9);
+    i32 H = (i32)lua_tonumber(LuaState, -8);
+    f32 R = (f32)lua_tonumber(LuaState, -7);
+    f32 A = (f32)lua_tonumber(LuaState, -6);
     const char *Name = (const char *)lua_tostring(LuaState, -5);
     f32 RelU0 = (f32)lua_tonumber(LuaState, -4); 
     f32 RelV0 = (f32)lua_tonumber(LuaState, -3); 
@@ -252,6 +243,6 @@ internal i32 DrawSprite(lua_State *LuaState)
         AbsU0 + U0Offset, VLength - (AbsV0 + V1Offset), 
         AbsU0 + U1Offset, VLength - (AbsV0 + V0Offset)
     };
-    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(0.0f), Uvs);
+    AddQuadToRenderQueue(Renderer, (f32)X, (f32)Y, (f32)W, (f32)H, (f32)glm::radians(R), Uvs, A);
     return 0;
 }

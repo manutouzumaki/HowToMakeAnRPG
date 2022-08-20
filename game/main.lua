@@ -64,6 +64,5 @@ function update(dt)
     gHero.mEntity:Draw(gRenderer)
 
     gHero.mController:Update(dt)
+
 end
-
-
