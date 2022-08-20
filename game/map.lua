@@ -63,11 +63,11 @@ function Map:Render(renderer)
     -- and use to get the tile
 
     local tileLeft, tileBottom =
-        self:PointToTile(self.mCamX - (gDisplayWidth / 2) - self.mTileWidth,
-                         self.mCamY - (gDisplayHeight / 2) - self.mTileHeight)
+        self:PointToTile(self.mCamX - (gDisplayWidth / 2),
+                         self.mCamY - (gDisplayHeight / 2))
     local tileRight, tileTop =
-        self:PointToTile(self.mCamX + (gDisplayWidth / 2) + self.mTileWidth,
-                         self.mCamY + (gDisplayHeight / 2) + self.mTileHeight)
+        self:PointToTile(self.mCamX + (gDisplayWidth / 2),
+                         self.mCamY + (gDisplayHeight / 2))
 
     for j = tileTop, tileBottom do
         for i = tileLeft, tileRight do
@@ -92,4 +92,8 @@ end
 function Map:GotoTile(x, y)
     self:Goto((x * self.mTileWidth) + self.mTileWidth / 2,
               (y * self.mTileHeight) + self.mTileHeight / 2)
+end
+
+function Map:GetTileFoot(x, y)
+    return self.mX + (x *  self.mTileWidth), self.mY - (y * self.mTileHeight) - self.mTileHeight / 2
 end

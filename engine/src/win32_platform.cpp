@@ -184,7 +184,8 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext, i32 width, i32 hei
     }
     
     glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
     glViewport(0, 0, width, height);
 }
 
@@ -202,12 +203,21 @@ internal HWND Win32InitializeWindow(HINSTANCE Instance, i32 X, i32 Y, i32 Width,
 
     RegisterClassEx(&WindowClass);
 
-    RECT Rect = {X, Y, Width, Height};
+    i32 ScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+    i32 ScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    RECT Rect = {};
+    SetRect(&Rect,
+            (ScreenWidth / 2) - (Width / 2),
+            (ScreenHeight / 2) - (Height / 2),
+            (ScreenWidth / 2) + (Width / 2),
+            (ScreenHeight / 2) + (Height / 2));
+
     AdjustWindowRect( &Rect, WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU, false );
 
     HWND Window = CreateWindowA(Name, Name,
                                 WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,
-                                CW_USEDEFAULT, CW_USEDEFAULT,
+                                X, Y,
                                 Rect.right - Rect.left,
                                 Rect.bottom - Rect.top,
                                 0, 0, Instance, 0);
@@ -352,8 +362,14 @@ int main()
     WindowWidth = (i32)lua_tointeger(GlobalLuaState, -2);
     WindowHeight = (i32)lua_tointeger(GlobalLuaState, -1);
     
+    i32 ScreenWidth = GetSystemMetrics(SM_CXSCREEN);
+    i32 ScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    i32 WindowX = (ScreenWidth/2) - (WindowWidth/2);
+    i32 WindowY= (ScreenHeight/2) - (WindowHeight/2);
+
     Win32LoadXInput();
-    HWND Window = Win32InitializeWindow(Instance, 0, 0, WindowWidth, WindowHeight, WindowName);
+    HWND Window = Win32InitializeWindow(Instance, WindowX, WindowY, WindowWidth, WindowHeight, WindowName);
     HDC DeviceContext = GetDC(Window);
     Win32InitializeOpenGLContext(DeviceContext, WindowWidth, WindowHeight);
     stbi_set_flip_vertically_on_load(TRUE);
@@ -390,10 +406,16 @@ int main()
     renderer *Renderer = (renderer *)lua_tointeger(GlobalLuaState, -1);
 
     shader *Shader = ShaderCreate("../shaders/vertex.glsl", "../shaders/fragment.glsl");
+    Renderer->CurrentShader = Shader;
     ShaderBind(Shader);
     UpdateInt(Shader, "texture1", 0);
     glm::mat4 ProjectionMat = glm::ortho(-(f32)WindowWidth*0.5f, (f32)WindowWidth*0.5f, -(f32)WindowHeight*0.5f, (f32)WindowHeight*0.5f, 0.0f, 100.0f);
     UpdateMat4f(Shader, "uProj", ProjectionMat);
+
+    glm::mat4 ViewMat = glm::lookAt(Renderer->Position,
+                                    Renderer->Front,
+                                    Renderer->Up);
+    UpdateMat4f(Shader, "uView", ViewMat);
 
     LARGE_INTEGER LastCounter = {};
     QueryPerformanceCounter(&LastCounter);
@@ -401,11 +423,6 @@ int main()
     GlobalRunning = true;
     while(GlobalRunning)
     {
-        glm::mat4 ViewMat = glm::lookAt(Renderer->Position,
-                                        Renderer->Front,
-                                        Renderer->Up);
-        UpdateMat4f(Shader, "uView", ViewMat);
-
         LARGE_INTEGER CurrentCounter = {};
         QueryPerformanceCounter(&CurrentCounter);
         f64 Fps = (f64)Frequency.QuadPart / (f64)(CurrentCounter.QuadPart - LastCounter.QuadPart);
@@ -413,7 +430,7 @@ int main()
 
         Win32ProcessMessages(&CurrInput, &LastInput);
  
-        glClearColor(0.3f, 0.5f, 0.9f, 1.0f);
+        glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // TODO: Render

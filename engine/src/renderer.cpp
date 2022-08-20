@@ -69,7 +69,10 @@ internal i32 RendererTranslate(lua_State *LuaState)
     Renderer->Position.x = (f32)X;
     Renderer->Position.y = (f32)Y;
     Renderer->Front = glm::vec3(Renderer->Position.x, Renderer->Position.y, -1);
-    
+    glm::mat4 ViewMat = glm::lookAt(Renderer->Position,
+                                    Renderer->Front,
+                                    Renderer->Up);
+    UpdateMat4f(Renderer->CurrentShader, "uView", ViewMat);
     return 0;
 }
 
