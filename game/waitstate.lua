@@ -28,17 +28,18 @@ function WaitState:Update(dt)
         if self.mFrameCount >= self.mFrameResetSpeed then
             self.mFrameCount = -1
             self.mEntity:SetFrame(self.mEntity.mStartFrame)
+            self.mCharacter.mFacing = "down"
         end
     end
 
     local leftStickX, leftStickY = GetJoystickLeftStickInfo()
-    if GetKeyDown('A') or GetJoystickButtonDown(JOYSTICK_BUTTON_LEFT) then
+    if GetKeyDown(KEYBOARD_KEY_A) or GetKeyDown(KEYBOARD_KEY_LEFT) or GetJoystickButtonDown(JOYSTICK_BUTTON_LEFT) then
         self.mController:Change("move", {x = -1, y = 0})
-    elseif GetKeyDown('D') or GetJoystickButtonDown(JOYSTICK_BUTTON_RIGHT) then
+    elseif GetKeyDown(KEYBOARD_KEY_D) or GetKeyDown(KEYBOARD_KEY_RIGHT) or GetJoystickButtonDown(JOYSTICK_BUTTON_RIGHT) then
         self.mController:Change("move", {x = 1, y = 0})
-    elseif GetKeyDown('W') or GetJoystickButtonDown(JOYSTICK_BUTTON_UP) then
+    elseif GetKeyDown(KEYBOARD_KEY_W) or GetKeyDown(KEYBOARD_KEY_UP) or GetJoystickButtonDown(JOYSTICK_BUTTON_UP) then
         self.mController:Change("move", {x = 0, y = -1})
-    elseif GetKeyDown('S') or GetJoystickButtonDown(JOYSTICK_BUTTON_DOWN) then
+    elseif GetKeyDown(KEYBOARD_KEY_S) or GetKeyDown(KEYBOARD_KEY_DOWN) or GetJoystickButtonDown(JOYSTICK_BUTTON_DOWN) then
         self.mController:Change("move", {x = 0, y = 1})
     elseif leftStickX < -0.6 then
         self.mController:Change("move", {x = -1, y = 0})
@@ -49,4 +50,5 @@ function WaitState:Update(dt)
     elseif leftStickY < -0.6 then
         self.mController:Change("move", {x = 0, y = 1})
     end
+
 end

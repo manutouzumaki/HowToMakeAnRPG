@@ -12,11 +12,10 @@ function Map:Create(mapDef)
 
         mLayer = layer,
         mWidth = layer.width,
-        mHeight = layer.height,
-
-        mTiles = layer.data,
+        mHeight = layer.height,        
         mTileWidth = mapDef.tilewidth,
-        mTileHeight = mapDef.tileheight
+        mTileHeight = mapDef.tileheight,
+        mTriggers = {},
     }
     local displayWidth, displayHeight = GetDisplayInfo()
     this.mX = -displayWidth / 2 + this.mTileWidth / 2
@@ -30,6 +29,14 @@ function Map:Create(mapDef)
     this.mWidthPixel = this.mWidth * this.mTileWidth
     this.mHeightPixel = this.mHeight * this.mTileHeight
     this.mUVs = GenerateUVs(this.mTextureAtlas, this.mTileWidth, this.mTileHeight)
+
+    -- Assign blocking tile id
+    for _, v in ipairs(mapDef.tilesets) do
+        if v.name == "collision_graphic" then
+            this.mBlockingTile = v.firstgid
+        end
+    end
+    assert(this.mBlockingTile)
 
     setmetatable(this, self)
     return this
@@ -53,12 +60,30 @@ function Map:PointToTile(x, y)
     return tileX, tileY
 end
 
-function Map:GetTile(x, y)
-    x = x + 1
-    return self.mTiles[x + y * self.mWidth]
+function Map:GetTile(x, y, layer)
+    local layer = layer or 1
+    local tiles = self.mMapDef.layers[layer].data
+    return tiles[self:CoordToIndex(x, y)]
 end
 
-function Map:Render(renderer)
+function Map:CoordToIndex(x, y)
+    x = x + 1
+    return x + y * self.mWidth
+end
+
+function Map:IsBlocked(layer, tileX, tileY)
+    -- Collision layer should always be 1 above the official layer
+    local tile = self:GetTile(tileX, tileY, layer + 2)
+    return tile == self.mBlockingTile
+end
+
+function Map:Render(rendered)
+    self:RenderLayer(rendered, 1)
+end
+
+function Map:RenderLayer(renderer, layer)
+    
+    local layerIndex = (layer * 3) - 2
     -- Get the topleft and bottomright pixel of the camera
     -- and use to get the tile
 
@@ -71,18 +96,40 @@ function Map:Render(renderer)
 
     for j = tileTop, tileBottom do
         for i = tileLeft, tileRight do
-            local tile = self:GetTile(i, j)
-            local uvs = self.mUVs[tile] 
-            DrawSprite(renderer,
-                       self.mX + i * self.mTileWidth,
-                       self.mY - j * self.mTileHeight,
-                       self.mTileWidth, self.mTileHeight,
-                       0.0, 1.0,
-                       self.mTextureAtlas,
-                       table.unpack(uvs))
+
+            local xPos = self.mX + i * self.mTileWidth
+            local yPos = self.mY - j * self.mTileHeight
+            local uvs = {}
+            local tile = self:GetTile(i, j, layerIndex)
+
+            if tile > 0 then
+                uvs = self.mUVs[tile]
+                DrawSprite(renderer,
+                           xPos, yPos,
+                           self.mTileWidth, self.mTileHeight,
+                           0.0, 1.0,
+                           self.mTextureAtlas,
+                           table.unpack(uvs))
+            end
+        
+            tile = self:GetTile(i, j, layerIndex + 1)
+            if tile > 0 then
+                uvs = self.mUVs[tile]
+                DrawSprite(renderer,
+                           xPos, yPos,
+                           self.mTileWidth, self.mTileHeight,
+                           0.0, 1.0,
+                           self.mTextureAtlas,
+                           table.unpack(uvs))
+            end
 
         end
     end
+end
+
+function Map:LayerCount()
+    assert(#self.mMapDef.layers % 3 == 0)
+    return #self.mMapDef.layers / 3
 end
 
 function Map:Goto(x, y)
@@ -97,4 +144,17 @@ end
 
 function Map:GetTileFoot(x, y)
     return self.mX + (x *  self.mTileWidth), self.mY - (y * self.mTileHeight) - self.mTileHeight / 2
+end
+
+function Map:GetTrigger(layer, x, y)
+
+    local triggers = self.mTriggers[layer]
+    
+    if not triggers then
+        return
+    end
+    
+    local index = self:CoordToIndex(x, y)
+    return triggers[index]
+
 end

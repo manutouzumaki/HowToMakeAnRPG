@@ -174,7 +174,7 @@ internal void Win32InitializeOpenGLContext(HDC DeviceContext, i32 width, i32 hei
                     (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
         if(wglSwapIntervalEXT)
         {
-            wglSwapIntervalEXT(1);
+            wglSwapIntervalEXT(0);
         }
     
         if(!gladLoadGL())

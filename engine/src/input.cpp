@@ -78,8 +78,7 @@ internal read_file_result Win32ReadEntireFile(const char *Filepath)
 
 internal i32 GetKeyDown(lua_State *LuaState)
 {
-    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
-    unsigned int ASCII = (unsigned int)*KeyCode;
+    unsigned int ASCII = (unsigned int)lua_tointeger(LuaState, -1);
     input *Input = GlobalInputPtr;
     lua_pushboolean(LuaState, Input->Keys[ASCII].IsDown);
     return 1;
@@ -87,8 +86,7 @@ internal i32 GetKeyDown(lua_State *LuaState)
 
 internal i32 GetKeyJustDown(lua_State *LuaState)
 {
-    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
-    unsigned int ASCII = (unsigned int)*KeyCode;
+    unsigned int ASCII = (unsigned int)lua_tointeger(LuaState, -1);
     input *Input = GlobalInputPtr;
     if(Input->Keys[ASCII].IsDown != Input->Keys[ASCII].WasDown)
     {
@@ -103,8 +101,7 @@ internal i32 GetKeyJustDown(lua_State *LuaState)
 
 internal i32 GetKeyUp(lua_State *LuaState)
 {
-    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
-    unsigned int ASCII = (unsigned int)*KeyCode;
+    unsigned int ASCII = (unsigned int)lua_tointeger(LuaState, -1);
     input *Input = GlobalInputPtr;
     lua_pushboolean(LuaState, !Input->Keys[ASCII].IsDown);
     return 1;
@@ -112,8 +109,7 @@ internal i32 GetKeyUp(lua_State *LuaState)
 
 internal i32 GetKeyJustUp(lua_State *LuaState)
 {
-    const char *KeyCode = (const char *)lua_tostring(LuaState, -1);
-    unsigned int ASCII = (unsigned int)*KeyCode;
+    unsigned int ASCII = (unsigned int)lua_tointeger(LuaState, -1);
     input *Input = GlobalInputPtr;
     if(Input->Keys[ASCII].IsDown != Input->Keys[ASCII].WasDown)
     {
